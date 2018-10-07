@@ -36,10 +36,10 @@
 
     <TextBlock x:Name="tblckMessage" Text="" HorizontalAlignment="Center" Margin="0,130,0,0" VerticalAlignment="Top" Width="650" Height="25" TextWrapping="Wrap" TextAlignment="Center"/>
 
-    <Button x:Name="btnTest" Content="Test" HorizontalAlignment="Center" Margin="-310,160,0,0" VerticalAlignment="Top" Width="100" Click="btnTest_Click"/>
-    <Button x:Name="btnImagesToGif" Content="Images to Gif" HorizontalAlignment="Center" Margin="-105,160,0,0" VerticalAlignment="Top" Width="100" Click="btnImagesToGif_Click"/>
-    <Button x:Name="btnCombineGifs" Content="Combine Gifs" HorizontalAlignment="Center" Margin="105,160,0,0" VerticalAlignment="Top" Width="100" Click="btnCombineGifs_Click"/>
-    <Button x:Name="btnGifToGifv" Content="Gif to Gifv" HorizontalAlignment="Center" Margin="310,160,0,0" VerticalAlignment="Top" Width="100" Click="btnGifToGifv_Click"/>
-
+    <Button x:Name="btnTest" Content="Test" HorizontalAlignment="Center" Margin="-410,160,0,0" VerticalAlignment="Top" Width="100" Click="btnTest_Click"/>
+    <Button x:Name="btnImagesToGif" Content="Images to Gif" HorizontalAlignment="Center" Margin="-205,160,0,0" VerticalAlignment="Top" Width="100" Click="btnImagesToGif_Click"/>
+    <Button x:Name="btnCombineGifs" Content="Combine Gifs" HorizontalAlignment="Center" Margin="0,160,0,0" VerticalAlignment="Top" Width="100" Click="btnCombineGifs_Click"/>
+    <Button x:Name="btnGifToGifv" Content="Gif to Gifv" HorizontalAlignment="Center" Margin="205,160,0,0" VerticalAlignment="Top" Width="100" Click="btnGifToGifv_Click"/>
+    <Button x:Name="btnAlignImage" Content="Align Image" HorizontalAlignment="Center" Margin="410,160,0,0" VerticalAlignment="Top" Width="100" Click="btnAlignImage_Click"/>
   </Grid>
 </Window>

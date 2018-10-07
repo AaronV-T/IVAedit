@@ -14,193 +14,172 @@ using Emgu.CV.XFeatures2D;
 
 namespace IVAE.MediaManipulation
 {
+  public enum MatchingTechnique { FAST = 0, ORB = 1, SURF = 2 }
+
   public static class ImageFeatureDetector
   {
-    public static void FindMatchesFast(Mat modelImage, Mat observedImage, out long matchTime, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, VectorOfVectorOfDMatch matches, out Mat mask, out Mat homography)
-    {
-      Stopwatch watch = Stopwatch.StartNew();
-
-      int k = 2;
-      double uniquenessThreshold = 0.8;
-
-      homography = null;
-      modelKeyPoints = new VectorOfKeyPoint();
-      observedKeyPoints = new VectorOfKeyPoint();
-
-      FastDetector fastCPU = new FastDetector(20, true);
-      BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor();
-
-      // Extract features from model image.
-      UMat modelDescriptors = new UMat();
-      fastCPU.DetectRaw(modelImage, modelKeyPoints, null);
-      modelKeyPoints = GetBestKeypoints(modelKeyPoints, 500);
-      descriptor.Compute(modelImage, modelKeyPoints, modelDescriptors);
-
-      // Extract features from observed image.
-      UMat observedDescriptors = new UMat();
-      fastCPU.DetectRaw(observedImage, observedKeyPoints, null);
-      observedKeyPoints = GetBestKeypoints(observedKeyPoints, 500);
-      descriptor.Compute(observedImage, observedKeyPoints, observedDescriptors);
-
-      BFMatcher matcher = new BFMatcher(DistanceType.Hamming);
-      matcher.Add(modelDescriptors);
-
-      matcher.KnnMatch(observedDescriptors, matches, k, null);
-      mask = new Mat(matches.Size, 1, DepthType.Cv8U, 1);
-      mask.SetTo(new MCvScalar(255));
-      Features2DToolbox.VoteForUniqueness(matches, uniquenessThreshold, mask);
-
-      int nonZeroCount = CvInvoke.CountNonZero(mask);
-      if (nonZeroCount >= 4)
-      {
-        nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, matches, mask, 1.5, 20);
-        if (nonZeroCount >= 4)
-          homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, matches, mask, 2);
-      }
-
-      watch.Stop();
-      matchTime = watch.ElapsedMilliseconds;
-    }
-
-    public static void FindMatchesSurf(Mat modelImage, Mat observedImage, out long matchTime, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, VectorOfVectorOfDMatch matches, out Mat mask, out Mat homography)
-    {
-      Stopwatch watch = Stopwatch.StartNew();
-
-      int k = 2;
-      double uniquenessThreshold = 0.8;
-      double hessianThresh = 300;
-
-      homography = null;
-      modelKeyPoints = new VectorOfKeyPoint();
-      observedKeyPoints = new VectorOfKeyPoint();
-
-#if !__IOS__
-      if (CudaInvoke.HasCuda)
-      {
-        CudaSURF surfCuda = new CudaSURF((float)hessianThresh);
-        using (GpuMat gpuModelImage = new GpuMat(modelImage))
-        //extract features from the object image
-        using (GpuMat gpuModelKeyPoints = surfCuda.DetectKeyPointsRaw(gpuModelImage, null))
-        using (GpuMat gpuModelDescriptors = surfCuda.ComputeDescriptorsRaw(gpuModelImage, null, gpuModelKeyPoints))
-        using (CudaBFMatcher matcher = new CudaBFMatcher(DistanceType.L2))
-        {
-          surfCuda.DownloadKeypoints(gpuModelKeyPoints, modelKeyPoints);
-
-          // extract features from the observed image
-          using (GpuMat gpuObservedImage = new GpuMat(observedImage))
-          using (GpuMat gpuObservedKeyPoints = surfCuda.DetectKeyPointsRaw(gpuObservedImage, null))
-          using (GpuMat gpuObservedDescriptors = surfCuda.ComputeDescriptorsRaw(gpuObservedImage, null, gpuObservedKeyPoints))
-          //using (GpuMat tmp = new GpuMat())
-          //using (Stream stream = new Stream())
-          {
-            matcher.KnnMatch(gpuObservedDescriptors, gpuModelDescriptors, matches, k);
-
-            surfCuda.DownloadKeypoints(gpuObservedKeyPoints, observedKeyPoints);
-
-            mask = new Mat(matches.Size, 1, DepthType.Cv8U, 1);
-            mask.SetTo(new MCvScalar(255));
-            Features2DToolbox.VoteForUniqueness(matches, uniquenessThreshold, mask);
-
-            int nonZeroCount = CvInvoke.CountNonZero(mask);
-            if (nonZeroCount >= 4)
-            {
-              nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints,
-                 matches, mask, 1.5, 20);
-              if (nonZeroCount >= 4)
-                homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints,
-                   observedKeyPoints, matches, mask, 2);
-            }
-          }
-          watch.Stop();
-        }
-      }
-      else
-#endif
-      {
-        using (UMat uModelImage = modelImage.ToUMat(AccessType.Read))
-        using (UMat uObservedImage = observedImage.ToUMat(AccessType.Read))
-        {
-          SURF surfCPU = new SURF(hessianThresh);
-          //extract features from the object image
-          UMat modelDescriptors = new UMat();
-          surfCPU.DetectAndCompute(uModelImage, null, modelKeyPoints, modelDescriptors, false);
-
-          // extract features from the observed image
-          UMat observedDescriptors = new UMat();
-          surfCPU.DetectAndCompute(uObservedImage, null, observedKeyPoints, observedDescriptors, false);
-          BFMatcher matcher = new BFMatcher(DistanceType.L2);
-          matcher.Add(modelDescriptors);
-
-          matcher.KnnMatch(observedDescriptors, matches, k, null);
-          mask = new Mat(matches.Size, 1, DepthType.Cv8U, 1);
-          mask.SetTo(new MCvScalar(255));
-          Features2DToolbox.VoteForUniqueness(matches, uniquenessThreshold, mask);
-
-          int nonZeroCount = CvInvoke.CountNonZero(mask);
-          if (nonZeroCount >= 4)
-          {
-            nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints,
-               matches, mask, 1.5, 20);
-            if (nonZeroCount >= 4)
-              homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints,
-                 observedKeyPoints, matches, mask, 2);
-          }
-
-          watch.Stop();
-        }
-      }
-      matchTime = watch.ElapsedMilliseconds;
-    }
-
     /// <summary>
     /// Draw the model image and observed image, the matched features and homography projection.
     /// </summary>
     /// <param name="modelImage">The model image</param>
     /// <param name="observedImage">The observed image</param>
-    /// <param name="matchTime">The output total time for computing the homography matrix.</param>
     /// <returns>The model image and observed image, the matched features and homography projection.</returns>
-    public static Mat DrawMatchesSurf(Mat modelImage, Mat observedImage, out long matchTime)
+    public static Bitmap DrawMatches(Bitmap modelImage, Bitmap observedImage, MatchingTechnique matchingTechnique)
     {
-      Mat homography;
       VectorOfKeyPoint modelKeyPoints;
       VectorOfKeyPoint observedKeyPoints;
+
+      using (Image<Bgr, byte> modelImg = new Image<Bgr, byte>(modelImage))
+      using (Image<Bgr, byte> observedImg = new Image<Bgr, byte>(observedImage))
+      using (Emgu.CV.Mat modelMat = modelImg.Mat)
+      using (Emgu.CV.Mat observedMat = observedImg.Mat)
       using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
       {
-        Mat mask;
-        FindMatchesSurf(modelImage, observedImage, out matchTime, out modelKeyPoints, out observedKeyPoints, matches,
-           out mask, out homography);
+        FindMatches(modelMat, observedMat, out modelKeyPoints, out observedKeyPoints, matches, out Mat mask, out Mat homography, matchingTechnique);
 
-        //Draw the matched keypoints
-        Mat result = new Mat();
-        Features2DToolbox.DrawMatches(modelImage, modelKeyPoints, observedImage, observedKeyPoints,
-           matches, result, new MCvScalar(255, 255, 255), new MCvScalar(255, 255, 255), mask);
-
-        #region draw the projected region on the image
-
-        if (homography != null)
+        try
         {
-          //draw a rectangle along the projected model
-          Rectangle rect = new Rectangle(Point.Empty, modelImage.Size);
-          PointF[] pts = new PointF[]
+          using (Mat result = new Mat())
           {
-                  new PointF(rect.Left, rect.Bottom),
-                  new PointF(rect.Right, rect.Bottom),
-                  new PointF(rect.Right, rect.Top),
-                  new PointF(rect.Left, rect.Top)
-          };
-          pts = CvInvoke.PerspectiveTransform(pts, homography);
+            Features2DToolbox.DrawMatches(modelMat, modelKeyPoints, observedMat, observedKeyPoints, matches, result, new MCvScalar(255, 0, 0), new MCvScalar(0, 0, 255), mask);
 
-          Point[] points = Array.ConvertAll<PointF, Point>(pts, Point.Round);
-          using (VectorOfPoint vp = new VectorOfPoint(points))
-          {
-            CvInvoke.Polylines(result, vp, true, new MCvScalar(255, 0, 0, 255), 5);
+            return result.ToBitmap();
           }
-
         }
+        catch (Exception)
+        {
+          throw;
+        }
+        finally
+        {
+          mask.Dispose();
+          homography.Dispose();
+        }
+      }
+    }
 
-        #endregion
+    public static void FindMatches(Mat modelImage, Mat observedImage, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, VectorOfVectorOfDMatch matches, out Mat mask, out Mat homography, MatchingTechnique matchingTechnique, float keyPointFilter = 1, double detectorParameter = -1)
+    {
+      int k = 2;
+      double uniquenessThreshold = 0.8;
 
-        return result;
+      homography = null;
+      modelKeyPoints = new VectorOfKeyPoint();
+      observedKeyPoints = new VectorOfKeyPoint();
+
+      using (UMat uModelImage = modelImage.ToUMat(AccessType.Read))
+      using (UMat uObservedImage = observedImage.ToUMat(AccessType.Read))
+      {
+        Feature2D detector;
+        Feature2D descriptor;
+        DistanceType distanceType;
+        if (matchingTechnique == MatchingTechnique.FAST)
+        {
+          if (detectorParameter <= 0)
+            detectorParameter = 20;
+
+          detector = new FastDetector((int)detectorParameter);
+          descriptor = new BriefDescriptorExtractor();
+          //descriptor = new Freak();
+          distanceType = DistanceType.Hamming;
+        }
+        else if (matchingTechnique == MatchingTechnique.ORB)
+        {
+          if (detectorParameter <= 0)
+            detectorParameter = 500;
+
+          detector = new ORBDetector((int)detectorParameter);
+          descriptor = detector;
+          distanceType = DistanceType.Hamming;
+        }
+        else if (matchingTechnique == MatchingTechnique.SURF)
+        {
+          if (detectorParameter <= 0)
+            detectorParameter = 300;
+
+          detector = new SURF(detectorParameter);
+          descriptor = detector;
+          distanceType = DistanceType.L2;
+        }
+        else
+          throw new NotImplementedException($"{matchingTechnique} not supported.");
+
+        // Extract features from model image.
+        UMat modelDescriptors = new UMat();
+        detector.DetectRaw(uModelImage, modelKeyPoints, null);
+        if (keyPointFilter < 2)
+          modelKeyPoints = GetBestKeypointsPercent(modelKeyPoints, keyPointFilter);
+        else
+          modelKeyPoints = GetBestKeypointsCount(modelKeyPoints, (int)keyPointFilter);
+        descriptor.Compute(uModelImage, modelKeyPoints, modelDescriptors);
+
+        // Extract features from observed image.
+        UMat observedDescriptors = new UMat();
+        detector.DetectRaw(uObservedImage, observedKeyPoints, null);
+        if (keyPointFilter < 2)
+          observedKeyPoints = GetBestKeypointsPercent(observedKeyPoints, keyPointFilter);
+        else
+          observedKeyPoints = GetBestKeypointsCount(observedKeyPoints, (int)keyPointFilter);
+        descriptor.Compute(uObservedImage, observedKeyPoints, observedDescriptors);
+
+        // Match keypoints.
+        BFMatcher matcher = new BFMatcher(distanceType);
+        matcher.Add(modelDescriptors);
+        matcher.KnnMatch(observedDescriptors, matches, k, null);
+
+        mask = new Mat(matches.Size, 1, DepthType.Cv8U, 1);
+        mask.SetTo(new MCvScalar(255));
+        Features2DToolbox.VoteForUniqueness(matches, uniquenessThreshold, mask);
+
+        int nonZeroCount = CvInvoke.CountNonZero(mask);
+        if (nonZeroCount >= 4)
+        {
+          nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, matches, mask, 1.5, 20);
+          if (nonZeroCount >= 4)
+            homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, matches, mask, 2);
+        }
+      }
+    }
+
+    public static Bitmap GetAlignedImage(Bitmap imageToAlign, Bitmap referenceImage)
+    {
+      using (Image<Bgr, byte> alignImg = new Image<Bgr, byte>(imageToAlign))
+      using (Image<Bgr, byte> refImg = new Image<Bgr, byte>(referenceImage))
+      using (Emgu.CV.Mat alignMat = alignImg.Mat)
+      using (Emgu.CV.Mat refMat = refImg.Mat)
+      {
+        using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
+        {
+          FindMatches(alignMat, refMat, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, matches, out Mat mask, out Mat homography, MatchingTechnique.SURF, 1f);
+
+          try
+          {
+            using (Mat result = new Mat())
+            {
+              Features2DToolbox.DrawMatches(alignMat, modelKeyPoints, refMat, observedKeyPoints, matches, result, new MCvScalar(255, 0, 0), new MCvScalar(0, 0, 255), mask);
+              result.Save(@"D:\Downloads\Draw.jpg");
+            }
+
+            using (Mat warped = new Mat())
+            {
+              if (homography == null)
+                throw new Exception("Could not determine homography between images.");
+
+              CvInvoke.WarpPerspective(alignMat, warped, homography, refMat.Size);
+
+              return warped.ToBitmap();
+            }
+          }
+          catch (Exception)
+          {
+            throw;
+          }
+          finally
+          {
+            mask.Dispose();
+            homography.Dispose();
+          }
+        }
       }
     }
 
@@ -218,8 +197,7 @@ namespace IVAE.MediaManipulation
       using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
       {
         Mat mask;
-        long matchTime;
-        FindMatchesFast(modelImage, observedImage, out matchTime, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography);
+        FindMatches(modelImage, observedImage, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography, MatchingTechnique.FAST, 500);
 
         var maskMatrix = new Matrix<byte>(mask.Rows, mask.Cols);
         mask.CopyTo(maskMatrix);
@@ -309,12 +287,32 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    private static VectorOfKeyPoint GetBestKeypoints(VectorOfKeyPoint keyPoints, int count)
+    private static VectorOfKeyPoint GetBestKeypointsCount(VectorOfKeyPoint keyPoints, int count)
     {
       List<MKeyPoint> kpList = keyPoints.ToArray().ToList();
       kpList.Sort((x, y) => x.Response > y.Response ? 1 : x.Response < y.Response ? -1 : 0);
       kpList = kpList.Take(count).ToList();
       return new VectorOfKeyPoint(kpList.ToArray());
+    }
+
+    private static VectorOfKeyPoint GetBestKeypointsPercent(VectorOfKeyPoint keyPoints, float percent)
+    {
+      if (percent < 0 || percent > 1)
+        throw new ArgumentOutOfRangeException(nameof(percent));
+
+      if (percent == 1)
+        return keyPoints;
+
+      int count = (int)Math.Round(keyPoints.Size * percent);
+      return GetBestKeypointsCount(keyPoints, count);
+    }
+
+    private static Bitmap ToBitmap(this Mat mat)
+    {
+      using (Image<Bgr, byte> img = mat.ToImage<Bgr, byte>())
+      {
+        return img.ToBitmap();
+      }
     }
   }
 }

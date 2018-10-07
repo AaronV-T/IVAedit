@@ -20,7 +20,7 @@ namespace IVAeditGUI
   /// </summary>
   public partial class MainWindow : Window
   {
-    public event Action OnCombineGifsButtonClick, OnImagesToGifButtonClick, OnGifToGifvButtonClick, OnTestButtonClick;
+    public event Action OnAlignImageButtonClick, OnCombineGifsButtonClick, OnImagesToGifButtonClick, OnGifToGifvButtonClick, OnTestButtonClick;
 
     public MainWindow()
     {
@@ -41,9 +41,9 @@ namespace IVAeditGUI
       }
     }
 
-    private void btnImagesToGif_Click(object sender, RoutedEventArgs e)
+    private void btnAlignImage_Click(object sender, RoutedEventArgs e)
     {
-      OnImagesToGifButtonClick?.Invoke();
+      OnAlignImageButtonClick?.Invoke();
     }
 
     private void btnCombineGifs_Click(object sender, RoutedEventArgs e)
@@ -51,14 +51,19 @@ namespace IVAeditGUI
       OnCombineGifsButtonClick?.Invoke();
     }
 
-    private void btnTest_Click(object sender, RoutedEventArgs e)
+    private void btnImagesToGif_Click(object sender, RoutedEventArgs e)
     {
-      OnTestButtonClick?.Invoke();
+      OnImagesToGifButtonClick?.Invoke();
     }
 
     private void btnGifToGifv_Click(object sender, RoutedEventArgs e)
     {
       OnGifToGifvButtonClick?.Invoke();
+    }
+
+    private void btnTest_Click(object sender, RoutedEventArgs e)
+    {
+      OnTestButtonClick?.Invoke();
     }
   }
 }

@@ -11,6 +11,18 @@ namespace IVAE.MediaManipulation
     public event Action<string> OnChangeStep;
     public event Action<float> OnProgressUpdate;
 
+    public string AlignImage(string imageToAlignPath, string referenceImagePath)
+    {
+      using (System.Drawing.Bitmap imageToAlign = new System.Drawing.Bitmap(imageToAlignPath))
+      using (System.Drawing.Bitmap referenceImage = new System.Drawing.Bitmap(referenceImagePath))
+      using (System.Drawing.Bitmap warpedImage = ImageFeatureDetector.GetAlignedImage(imageToAlign, referenceImage))
+      {
+        string outputPath = $@"{System.IO.Path.GetDirectoryName(imageToAlignPath)}\{System.IO.Path.GetFileNameWithoutExtension(imageToAlignPath)}_Aligned{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(imageToAlignPath)}";
+        warpedImage.Save(outputPath);
+        return outputPath;
+      }
+    }
+
     public string CombineGifs(string[] fileNames, int gifsPerLine)
     {
       string newGifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Combined{DateTime.Now.ToString("yyyMMdd_HHmmss")}.gif";
@@ -118,11 +130,13 @@ namespace IVAE.MediaManipulation
 
     public object Test(string[] fileNames)
     {
-      Emgu.CV.Mat mat1 = new Emgu.CV.Mat(fileNames[0], Emgu.CV.CvEnum.LoadImageType.AnyColor);
-      Emgu.CV.Mat mat2 = new Emgu.CV.Mat(fileNames[1], Emgu.CV.CvEnum.LoadImageType.AnyColor);
-
-      ImageFeatureDetector.DrawMatchesSurf(mat1, mat2, out long time).Save($@"{System.IO.Path.GetDirectoryName(fileNames[0])}\draw.jpg");
-
+      using (System.Drawing.Bitmap referenceImage = new System.Drawing.Bitmap(fileNames[0]))
+      using (System.Drawing.Bitmap imageToAlign = new System.Drawing.Bitmap(fileNames[1]))
+      using (System.Drawing.Bitmap warpedImage = ImageFeatureDetector.GetAlignedImage(imageToAlign, referenceImage))
+      {
+        warpedImage.Save($@"{System.IO.Path.GetDirectoryName(fileNames[1])}\Warped{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(fileNames[1])}");
+      }
+        
       return null;
     }
 

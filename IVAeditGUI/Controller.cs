@@ -15,10 +15,11 @@ namespace IVAeditGUI
     {
       this.mainWindow = mainWindow;
 
+      this.mainWindow.OnAlignImageButtonClick += AlignImage;
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
+      this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
       this.mainWindow.OnTestButtonClick += Test;
-      this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
 
       try
       {
@@ -49,6 +50,50 @@ namespace IVAeditGUI
       catch (Exception ex)
       {
         mainWindow.SetMessage($"Error: {ex.Message}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void AlignImage()
+    {
+      try
+      {
+        mainWindow.SetMessage("Aligning image.");
+
+        System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog1.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+        openFileDialog1.Title = "Select image to align.";
+        openFileDialog1.Multiselect = false;
+
+        if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+          return;
+
+        System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog2.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+        openFileDialog2.Title = "Select reference image.";
+        openFileDialog2.Multiselect = false;
+
+        if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+          return;
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.AlignImage(openFileDialog1.FileName, openFileDialog2.FileName);
+        });
+
+        mainWindow.SetMessage($"Image aligned '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
         Console.WriteLine(ex);
       }
     }
