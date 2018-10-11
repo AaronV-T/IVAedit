@@ -19,6 +19,7 @@ namespace IVAeditGUI
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
       this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
+      this.mainWindow.OnStabilizeVideoButtonClick += StabilizeVideo;
       this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
 
@@ -246,31 +247,75 @@ namespace IVAeditGUI
 
     public async void ConvertGifToGifv()
     {
-      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-      openFileDialog.Filter = "GIF File|*.gif";
-      openFileDialog.Title = "Select GIF.";
-      openFileDialog.Multiselect = false;
-
-      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      try
       {
-        mainWindow.SetMessage("Canceled.");
-        return;
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = "GIF File|*.gif";
+        openFileDialog.Title = "Select GIF.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string gifvPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          gifvPath = taskHandler.ConvertGifToGifv(openFileDialog.FileName);
+        });
+
+        mainWindow.SetMessage($"Gifv created '{gifvPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(gifvPath);
       }
-
-      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-      taskHandler.OnChangeStep += ChangeCurrentStep;
-      taskHandler.OnProgressUpdate += ProgressUpdate;
-
-      DateTime start = DateTime.Now;
-      string gifvPath = null;
-      await Task.Factory.StartNew(() =>
+      catch (Exception ex)
       {
-        gifvPath = taskHandler.ConvertGifToGifv(openFileDialog.FileName);
-      });
-
-      mainWindow.SetMessage($"Gifv created '{gifvPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-      System.Diagnostics.Process.Start(gifvPath);
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
     }
+
+    public async void StabilizeVideo()
+    {
+      try
+      {
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = "Video File|*.avi;*.mov;*.mp4;*.webm";
+        openFileDialog.Title = "Select Video.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.StabilizeVideo(openFileDialog.FileName);
+        });
+
+        mainWindow.SetMessage($"Stabilized video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+}
 
     public async void StitchImages()
     {

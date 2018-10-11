@@ -43,6 +43,7 @@
     <Button x:Name="btnGifToGifv" Content="Gif to Gifv" HorizontalAlignment="Center" Margin="205,160,0,0" VerticalAlignment="Top" Width="100" Click="btnGifToGifv_Click"/>
     <Button x:Name="btnAlignImage" Content="Align Image" HorizontalAlignment="Center" Margin="410,160,0,0" VerticalAlignment="Top" Width="100" Click="btnAlignImage_Click"/>
 
-    <Button x:Name="btnStitchImages" Content="StitchImages" HorizontalAlignment="Center" Margin="0,185,0,0" VerticalAlignment="Top" Width="100" Click="btnStitchImages_Click"/>
+    <Button x:Name="btnStitchImages" Content="StitchImages" HorizontalAlignment="Center" Margin="-105,185,0,0" VerticalAlignment="Top" Width="100" Click="btnStitchImages_Click"/>
+    <Button x:Name="btnStabilizeVideo" Content="Stabilize Video" HorizontalAlignment="Center" Margin="105,185,0,0" VerticalAlignment="Top" Width="100" Click="btnStabilizeVideo_Click"/>
   </Grid>
 </Window>

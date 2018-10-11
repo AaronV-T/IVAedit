@@ -48,7 +48,7 @@ namespace IVAE.MediaManipulation
         else if (matchingTechnique == MatchingTechnique.ORB)
         {
           if (detectorParameter <= 0)
-            detectorParameter = 500;
+            detectorParameter = 100000;
 
           detector = new ORBDetector((int)detectorParameter);
           descriptor = detector;
@@ -124,8 +124,7 @@ namespace IVAE.MediaManipulation
         var maskMA = maskMatrix.ManagedArray;
         var maskList = maskMA.OfType<byte>().ToList();
 
-        Dictionary<float, int> distCounts = new Dictionary<float, int>();
-        Dictionary<float, Tuple<List<float>, List<float>>> distOffsets = new Dictionary<float, Tuple<List<float>, List<float>>>();
+        Tuple<float, Tuple<List<float>, List<float>>> lowestDistanceOffsets = new Tuple<float, Tuple<List<float>, List<float>>>(float.MaxValue, null);
         for (int i = 0; i < matches.Size; i++)
         {
           // Skip matches not verified in the mask.
@@ -135,6 +134,11 @@ namespace IVAE.MediaManipulation
           for (int j = 0; j < matches[i].Size; j++)
           {
             float dist = (float)Math.Round(matches[i][j].Distance * 100) / 100;
+
+            if (dist > lowestDistanceOffsets.Item1)
+              continue;
+            else if (dist < lowestDistanceOffsets.Item1)
+              lowestDistanceOffsets = new Tuple<float, Tuple<List<float>, List<float>>>(dist, new Tuple<List<float>, List<float>>(new List<float>(), new List<float>()));
 
             int queryIdx = matches[i][j].QueryIdx;
             int trainIdx = matches[i][j].TrainIdx;
@@ -147,32 +151,14 @@ namespace IVAE.MediaManipulation
             float offsetX = modelX - obsX;
             float offsetY = modelY - obsY;
 
-            if (distCounts.ContainsKey(dist))
-            {
-              distCounts[dist] += 1;
-            }
-            else
-            {
-              distCounts.Add(dist, 1);
-              distOffsets[dist] = new Tuple<List<float>, List<float>>(new List<float>(), new List<float>());
-            }
-
-            distOffsets[dist].Item1.Add(offsetX);
-            distOffsets[dist].Item2.Add(offsetY);
+            lowestDistanceOffsets.Item2.Item1.Add(offsetX);
+            lowestDistanceOffsets.Item2.Item2.Add(offsetY);
           }
         }
 
-        KeyValuePair<float, int> commonDistance = new KeyValuePair<float, int>(0, 0);
-        foreach (var kvp in distCounts)
-        {
-          //Console.WriteLine($"Dist: {kvp.Key}. Occurrences: {kvp.Value}. Offset: {(int)Math.Round(distOffsets[kvp.Key].Item1.Average())}, {(int)Math.Round(distOffsets[kvp.Key].Item2.Average())}");
-          if (kvp.Value > commonDistance.Value)
-            commonDistance = kvp;
-        }
-        Console.WriteLine($"Matches: {matches.Size}. CommonDistance {commonDistance.Key} occurrences {commonDistance.Value}");
-        Console.WriteLine($"{(int)Math.Round(distOffsets[commonDistance.Key].Item1.Average())} {(int)Math.Round(distOffsets[commonDistance.Key].Item2.Average())}");
+        Console.WriteLine($"{(int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average())} {(int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average())}");
 
-        return new Tuple<int, int>((int)Math.Round(distOffsets[commonDistance.Key].Item1.Average()), (int)Math.Round(distOffsets[commonDistance.Key].Item2.Average()));
+        return new Tuple<int, int>((int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average()), (int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average()));
       }
     }
 

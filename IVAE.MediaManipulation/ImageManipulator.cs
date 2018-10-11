@@ -189,7 +189,7 @@ namespace IVAE.MediaManipulation
           if (imageAlignmentType == ImageAlignmentType.FASTWARP)
             matchingTechnique = MatchingTechnique.FAST;
           else if (imageAlignmentType == ImageAlignmentType.FULLWARP)
-            matchingTechnique = MatchingTechnique.SURF;
+            matchingTechnique = MatchingTechnique.ORB;
           else
             throw new NotImplementedException();
 
@@ -362,67 +362,25 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static void MakeGifvFromGif(string outputPath, string gifPath)
+    public static void MakeGifvFromImages(string outputPath, List<Bitmap> images, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
     {
-      int width, height;
-      List<int> animationDelays = new List<int>();
-      using (MagickImageCollection imageCollection = new MagickImageCollection(gifPath))
-      {
-        width = imageCollection[0].Width;
-        height = imageCollection[0].Height;
-
-        if (width % 2 != 0)
-          width--;
-        if (height % 2 != 0)
-          height--;
-
-        for (int i = 0; i < imageCollection.Count; i++)
-        {
-          animationDelays.Add(imageCollection[i].AnimationDelay);
-        }
-      }
-
-      int gcdAnimationDelay = MathHelper.GCD(animationDelays.ToArray());
-
-      using (Accord.Video.FFMPEG.VideoFileWriter vfw = new Accord.Video.FFMPEG.VideoFileWriter())
-      {
-        vfw.Open(outputPath, width, height, new Accord.Math.Rational(100, gcdAnimationDelay), Accord.Video.FFMPEG.VideoCodec.MPEG4);
-        
-        using (MagickImageCollection imageCollection = new MagickImageCollection(gifPath))
-        {
-          for (int i = 0; i < imageCollection.Count; i++)
-          {
-            OnProgress?.Invoke(i / (float)imageCollection.Count);
-
-            for (int j = 0; j < imageCollection[i].AnimationDelay / gcdAnimationDelay; j++)
-              vfw.WriteVideoFrame(imageCollection[i].ToBitmap());
-          }
-        }
-
-        vfw.Close();
-      }
-    }
-
-    public static void MakeGifvFromImages(string outputPath, List<string> imagePaths, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
-    {
-      int width, height;
-      using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(imagePaths[0]))
-      {
-        width = bmp.Width;
-        height = bmp.Height;
-      }
+      int width = images[0].Width;
+      int height = images[0].Height;
 
       using (Accord.Video.FFMPEG.VideoFileWriter vfw = new Accord.Video.FFMPEG.VideoFileWriter())
       {
         vfw.Open(outputPath, width, height, new Accord.Math.Rational(100, animationDelay), Accord.Video.FFMPEG.VideoCodec.MPEG4);
 
-        for (int i = 0; i < imagePaths.Count; i++)
+        for (int i = 0; i < images.Count; i++)
         {
-          OnProgress?.Invoke(i / (float)imagePaths.Count);
+          OnProgress?.Invoke(i / (float)images.Count);
 
-          using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(imagePaths[i]))
+          if (i < images.Count - 1)
+            vfw.WriteVideoFrame(images[i]);
+          else
           {
-            vfw.WriteVideoFrame(bmp);
+            for (int j = 0; j < finalFrameAnimationDelay / animationDelay; j++)
+              vfw.WriteVideoFrame(images[i]);
           }
         }
 

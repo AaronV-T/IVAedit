@@ -114,9 +114,17 @@ namespace IVAE.MediaManipulation
       OnChangeStep?.Invoke("Converting GIF to GIFV");
 
       string outputPath = $@"{System.IO.Path.GetDirectoryName(gifFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(gifFilePath)}.gifv";
-      ImageManipulator.OnProgress += ProgressUpdate;
-      ImageManipulator.MakeGifvFromGif(outputPath, gifFilePath);
-      ImageManipulator.OnProgress -= ProgressUpdate;
+      VideoManipulator.MakeGifvFromGif(outputPath, gifFilePath);
+
+      return outputPath;
+    }
+
+    public string StabilizeVideo(string videoFilePath)
+    {
+      OnChangeStep?.Invoke("Stabilizing Video");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Stabilized{System.IO.Path.GetExtension(videoFilePath)}";
+      VideoManipulator.StabilizeVideo(outputPath, videoFilePath);
 
       return outputPath;
     }
