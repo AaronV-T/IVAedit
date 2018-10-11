@@ -15,12 +15,12 @@ namespace IVAE.MediaManipulation
       {
         vfr.Open(path);
 
-        Console.WriteLine($"{vfr.FrameRate.ToDouble()} {vfr.FrameCount}");
-
         for (int i = 0; i < vfr.FrameCount; i++)
         {
-          System.Drawing.Bitmap frame = vfr.ReadVideoFrame();
+          //System.Drawing.Bitmap frame = vfr.ReadVideoFrame();
         }
+
+        Console.WriteLine($"{vfr.BitRate} {vfr.FrameRate.ToDouble()} {vfr.FrameCount} {vfr.CodecName}");
 
         vfr.Close();
       }

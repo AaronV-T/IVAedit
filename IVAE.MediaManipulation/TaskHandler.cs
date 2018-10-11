@@ -11,11 +11,11 @@ namespace IVAE.MediaManipulation
     public event Action<string> OnChangeStep;
     public event Action<float> OnProgressUpdate;
 
-    public string AlignImage(string imageToAlignPath, string referenceImagePath)
+    public string AlignImage(string imageToAlignPath, string referenceImagePath, ImageAlignmentType imageAlignmentType)
     {
       using (System.Drawing.Bitmap imageToAlign = new System.Drawing.Bitmap(imageToAlignPath))
       using (System.Drawing.Bitmap referenceImage = new System.Drawing.Bitmap(referenceImagePath))
-      using (System.Drawing.Bitmap warpedImage = ImageFeatureDetector.GetAlignedImage(imageToAlign, referenceImage))
+      using (System.Drawing.Bitmap warpedImage = ImageManipulator.GetAlignedImage(imageToAlign, referenceImage, imageAlignmentType))
       {
         string outputPath = $@"{System.IO.Path.GetDirectoryName(imageToAlignPath)}\{System.IO.Path.GetFileNameWithoutExtension(imageToAlignPath)}_Aligned{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(imageToAlignPath)}";
         warpedImage.Save(outputPath);
@@ -35,10 +35,10 @@ namespace IVAE.MediaManipulation
       return newGifPath;
     }
 
-    public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, int frameDelay, int finalDelay, int loops, int fontSize, bool writeFileNames, bool alignImages)
+    public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, int frameDelay, int finalDelay, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType imageAlignmentType)
     {
       List<System.Drawing.Bitmap> sourceImages = new List<System.Drawing.Bitmap>();
-      System.Drawing.Bitmap tempImage = null;
+      //System.Drawing.Bitmap tempImage = null;
       try
       {
         if (alignImages || writeFileNames || width != 0 || height != 0)
@@ -54,30 +54,24 @@ namespace IVAE.MediaManipulation
             // If cropping enabled: ...
             if (width != 0 || height != 0)
             {
-              // If aligning enabled: get the x/y offsets between the previous image and current image.
-              if (alignImages && i > 0)
+              if (!alignImages || imageAlignmentType != ImageAlignmentType.CROP || i == 0)
               {
-                DateTime start1 = DateTime.Now;
-                Tuple<int, int> offsets = ImageFeatureDetector.GetXYOffsets(tempImage, sourceImages[i]);
-                Console.WriteLine($"GetXYOffsets took {Math.Round((DateTime.Now - start1).TotalMilliseconds)}ms. Offsets{i + 1}: {offsets.Item1},{offsets.Item2}.");
-                x -= offsets.Item1;
-                y -= offsets.Item2;
+                DateTime start = DateTime.Now;
+                System.Drawing.Bitmap croppedImage = ImageManipulator.GetCroppedImage(sourceImages[i], x, y, width, height);
+                Console.WriteLine($"GetCroppedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
+                sourceImages[i].Dispose();
+                sourceImages[i] = croppedImage;
               }
+            }
 
-              // Dispose the previous raw image.
-              if (tempImage != null)
-                tempImage.Dispose();
-
-              // Create a cropped image.
+            // If image aligning enabled: ...
+            if (alignImages && i > 0)
+            {
               DateTime start = DateTime.Now;
-              System.Drawing.Bitmap croppedImage = ImageManipulator.GetCroppedImage(sourceImages[i], x, y, width, height);
-              Console.WriteLine($"GetCroppedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
-
-              // Store the current raw image.
-              tempImage = sourceImages[i];
-
-              // Store the current cropped image.
-              sourceImages[i] = croppedImage;
+              System.Drawing.Bitmap alignedImage = ImageManipulator.GetAlignedImage(sourceImages[i], sourceImages[i - 1], imageAlignmentType);
+              Console.WriteLine($"GetAlignedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
+              sourceImages[i].Dispose();
+              sourceImages[i] = alignedImage;
             }
 
             // If writing text enabled: write the file name onto the image.
@@ -112,7 +106,6 @@ namespace IVAE.MediaManipulation
       {
         foreach (System.Drawing.Bitmap bmp in sourceImages)
           bmp.Dispose();
-        tempImage.Dispose();
       }
     }
 
@@ -128,15 +121,37 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
+    public string StitchImages(string[] fileNames)
+    {
+      List<System.Drawing.Bitmap> bitmaps = new List<System.Drawing.Bitmap>();
+      try
+      {
+        foreach (string file in fileNames)
+          bitmaps.Add(new System.Drawing.Bitmap(file));
+
+        using (System.Drawing.Bitmap stitchedImage = ImageManipulator.GetStitchedImage(bitmaps))
+        {
+          string outputPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Stitched{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(fileNames[0])}";
+          stitchedImage.Save(outputPath);
+          return outputPath;
+        }
+      }
+      catch (Exception)
+      {
+        throw;
+      }
+      finally
+      {
+        foreach (System.Drawing.Bitmap bmp in bitmaps)
+          bmp.Dispose();
+      }
+    }
+
     public object Test(string[] fileNames)
     {
-      using (System.Drawing.Bitmap referenceImage = new System.Drawing.Bitmap(fileNames[0]))
-      using (System.Drawing.Bitmap imageToAlign = new System.Drawing.Bitmap(fileNames[1]))
-      using (System.Drawing.Bitmap warpedImage = ImageFeatureDetector.GetAlignedImage(imageToAlign, referenceImage))
-      {
-        warpedImage.Save($@"{System.IO.Path.GetDirectoryName(fileNames[1])}\Warped{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(fileNames[1])}");
-      }
-        
+      foreach (string file in fileNames)
+        VideoManipulator.Test(file);
+
       return null;
     }
 

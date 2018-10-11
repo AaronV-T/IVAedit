@@ -16,48 +16,10 @@ namespace IVAE.MediaManipulation
 {
   public enum MatchingTechnique { FAST = 0, ORB = 1, SURF = 2 }
 
+  public enum ImageAlignmentType { CROP = 0, FASTWARP = 1, FULLWARP = 2 }
+
   public static class ImageFeatureDetector
   {
-    /// <summary>
-    /// Draw the model image and observed image, the matched features and homography projection.
-    /// </summary>
-    /// <param name="modelImage">The model image</param>
-    /// <param name="observedImage">The observed image</param>
-    /// <returns>The model image and observed image, the matched features and homography projection.</returns>
-    public static Bitmap DrawMatches(Bitmap modelImage, Bitmap observedImage, MatchingTechnique matchingTechnique)
-    {
-      VectorOfKeyPoint modelKeyPoints;
-      VectorOfKeyPoint observedKeyPoints;
-
-      using (Image<Bgr, byte> modelImg = new Image<Bgr, byte>(modelImage))
-      using (Image<Bgr, byte> observedImg = new Image<Bgr, byte>(observedImage))
-      using (Emgu.CV.Mat modelMat = modelImg.Mat)
-      using (Emgu.CV.Mat observedMat = observedImg.Mat)
-      using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
-      {
-        FindMatches(modelMat, observedMat, out modelKeyPoints, out observedKeyPoints, matches, out Mat mask, out Mat homography, matchingTechnique);
-
-        try
-        {
-          using (Mat result = new Mat())
-          {
-            Features2DToolbox.DrawMatches(modelMat, modelKeyPoints, observedMat, observedKeyPoints, matches, result, new MCvScalar(255, 0, 0), new MCvScalar(0, 0, 255), mask);
-
-            return result.ToBitmap();
-          }
-        }
-        catch (Exception)
-        {
-          throw;
-        }
-        finally
-        {
-          mask.Dispose();
-          homography.Dispose();
-        }
-      }
-    }
-
     public static void FindMatches(Mat modelImage, Mat observedImage, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, VectorOfVectorOfDMatch matches, out Mat mask, out Mat homography, MatchingTechnique matchingTechnique, float keyPointFilter = 1, double detectorParameter = -1)
     {
       int k = 2;
@@ -141,48 +103,6 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static Bitmap GetAlignedImage(Bitmap imageToAlign, Bitmap referenceImage)
-    {
-      using (Image<Bgr, byte> alignImg = new Image<Bgr, byte>(imageToAlign))
-      using (Image<Bgr, byte> refImg = new Image<Bgr, byte>(referenceImage))
-      using (Emgu.CV.Mat alignMat = alignImg.Mat)
-      using (Emgu.CV.Mat refMat = refImg.Mat)
-      {
-        using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
-        {
-          FindMatches(alignMat, refMat, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, matches, out Mat mask, out Mat homography, MatchingTechnique.SURF, 1f);
-
-          try
-          {
-            using (Mat result = new Mat())
-            {
-              Features2DToolbox.DrawMatches(alignMat, modelKeyPoints, refMat, observedKeyPoints, matches, result, new MCvScalar(255, 0, 0), new MCvScalar(0, 0, 255), mask);
-              result.Save(@"D:\Downloads\Draw.jpg");
-            }
-
-            using (Mat warped = new Mat())
-            {
-              if (homography == null)
-                throw new Exception("Could not determine homography between images.");
-
-              CvInvoke.WarpPerspective(alignMat, warped, homography, refMat.Size);
-
-              return warped.ToBitmap();
-            }
-          }
-          catch (Exception)
-          {
-            throw;
-          }
-          finally
-          {
-            mask.Dispose();
-            homography.Dispose();
-          }
-        }
-      }
-    }
-
     /// <summary>
     /// Gets the x and y offsets between two images.
     /// </summary>
@@ -250,6 +170,7 @@ namespace IVAE.MediaManipulation
             commonDistance = kvp;
         }
         Console.WriteLine($"Matches: {matches.Size}. CommonDistance {commonDistance.Key} occurrences {commonDistance.Value}");
+        Console.WriteLine($"{(int)Math.Round(distOffsets[commonDistance.Key].Item1.Average())} {(int)Math.Round(distOffsets[commonDistance.Key].Item2.Average())}");
 
         return new Tuple<int, int>((int)Math.Round(distOffsets[commonDistance.Key].Item1.Average()), (int)Math.Round(distOffsets[commonDistance.Key].Item2.Average()));
       }
@@ -265,8 +186,8 @@ namespace IVAE.MediaManipulation
     {
       using (Image<Bgr, byte> img1 = new Image<Bgr, byte>(modelImage))
       using (Image<Bgr, byte> img2 = new Image<Bgr, byte>(observedImage))
-      using (Emgu.CV.Mat mat1 = img1.Mat)
-      using (Emgu.CV.Mat mat2 = img2.Mat)
+      using (Mat mat1 = img1.Mat)
+      using (Mat mat2 = img2.Mat)
       {
         return GetXYOffsets(mat1, mat2);
       }
@@ -307,7 +228,7 @@ namespace IVAE.MediaManipulation
       return GetBestKeypointsCount(keyPoints, count);
     }
 
-    private static Bitmap ToBitmap(this Mat mat)
+    public static Bitmap ToBitmap(this Mat mat)
     {
       using (Image<Bgr, byte> img = mat.ToImage<Bgr, byte>())
       {

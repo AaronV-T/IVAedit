@@ -4,6 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using ImageMagick;
+using System.Drawing;
+using Emgu.CV;
+using Emgu.CV.Features2D;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
 
 namespace IVAE.MediaManipulation
 {
@@ -165,7 +170,63 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static System.Drawing.Bitmap GetCroppedImage(System.Drawing.Bitmap image, int x, int y, int width, int height)
+    public static Bitmap GetAlignedImage(Bitmap imageToAlign, Bitmap referenceImage, ImageAlignmentType imageAlignmentType)
+    {
+      if (imageAlignmentType == ImageAlignmentType.CROP)
+      {
+        Tuple<int, int> offsets = ImageFeatureDetector.GetXYOffsets(imageToAlign, referenceImage);
+        return GetCroppedImage(imageToAlign, offsets.Item1, offsets.Item2, referenceImage.Width, referenceImage.Height);
+      }
+
+      using (Image<Bgr, byte> alignImg = new Image<Bgr, byte>(imageToAlign))
+      using (Image<Bgr, byte> refImg = new Image<Bgr, byte>(referenceImage))
+      using (Mat alignMat = alignImg.Mat)
+      using (Mat refMat = refImg.Mat)
+      {
+        using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
+        {
+          MatchingTechnique matchingTechnique;
+          if (imageAlignmentType == ImageAlignmentType.FASTWARP)
+            matchingTechnique = MatchingTechnique.FAST;
+          else if (imageAlignmentType == ImageAlignmentType.FULLWARP)
+            matchingTechnique = MatchingTechnique.SURF;
+          else
+            throw new NotImplementedException();
+
+          ImageFeatureDetector.FindMatches(alignMat, refMat, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, matches, out Mat mask, out Mat homography, matchingTechnique, 1.0f);
+
+          try
+          {
+            using (Mat result = new Mat())
+            {
+              Features2DToolbox.DrawMatches(alignMat, modelKeyPoints, refMat, observedKeyPoints, matches, result, new MCvScalar(255, 0, 0), new MCvScalar(0, 0, 255), mask);
+              result.Save(@"D:\Downloads\Draw.jpg");
+            }
+
+            using (Mat warped = new Mat())
+            {
+              if (homography == null)
+                throw new Exception("Could not determine homography between images.");
+
+              CvInvoke.WarpPerspective(alignMat, warped, homography, refMat.Size);
+              
+              return warped.ToBitmap();
+            }
+          }
+          catch (Exception)
+          {
+            throw;
+          }
+          finally
+          {
+            mask.Dispose();
+            homography.Dispose();
+          }
+        }
+      }
+    }
+
+    public static Bitmap GetCroppedImage(Bitmap image, int x, int y, int width, int height)
     {
       if (x < 0)
         throw new ArgumentOutOfRangeException(nameof(x));
@@ -186,7 +247,47 @@ namespace IVAE.MediaManipulation
       return image.Clone(rect, image.PixelFormat);
     }
 
-    public static System.Drawing.Bitmap GetImageWithDrawnText(System.Drawing.Bitmap image, string text, int fontSize)
+    /// <summary>
+    /// Draw the model image and observed image, the matched features and homography projection.
+    /// </summary>
+    /// <param name="modelImage">The model image</param>
+    /// <param name="observedImage">The observed image</param>
+    /// <returns>The model image and observed image, the matched features and homography projection.</returns>
+    public static Bitmap GetImageWithDrawnMatches(Bitmap modelImage, Bitmap observedImage, MatchingTechnique matchingTechnique)
+    {
+      VectorOfKeyPoint modelKeyPoints;
+      VectorOfKeyPoint observedKeyPoints;
+
+      using (Image<Bgr, byte> modelImg = new Image<Bgr, byte>(modelImage))
+      using (Image<Bgr, byte> observedImg = new Image<Bgr, byte>(observedImage))
+      using (Emgu.CV.Mat modelMat = modelImg.Mat)
+      using (Emgu.CV.Mat observedMat = observedImg.Mat)
+      using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
+      {
+        ImageFeatureDetector.FindMatches(modelMat, observedMat, out modelKeyPoints, out observedKeyPoints, matches, out Mat mask, out Mat homography, matchingTechnique);
+
+        try
+        {
+          using (Mat result = new Mat())
+          {
+            Features2DToolbox.DrawMatches(modelMat, modelKeyPoints, observedMat, observedKeyPoints, matches, result, new MCvScalar(255, 0, 0), new MCvScalar(0, 0, 255), mask);
+
+            return result.ToBitmap();
+          }
+        }
+        catch (Exception)
+        {
+          throw;
+        }
+        finally
+        {
+          mask.Dispose();
+          homography.Dispose();
+        }
+      }
+    }
+
+    public static Bitmap GetImageWithDrawnText(Bitmap image, string text, int fontSize)
     {
       DateTime start = DateTime.Now;
       using (MagickImage mi = new MagickImage(image))
@@ -196,7 +297,37 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static void MakeGifFromImages(string outputPath, List<System.Drawing.Bitmap> images, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
+    public static Bitmap GetStitchedImage(List<Bitmap> sourceImages)
+    {
+      VectorOfMat sourceMats = new VectorOfMat();
+      try
+      {
+        foreach (Bitmap bmp in sourceImages)
+          sourceMats.Push(new Image<Bgr, byte>(bmp).Mat);
+
+        using (Emgu.CV.Stitching.Stitcher stitcher = new Emgu.CV.Stitching.Stitcher(false))
+        {
+          using (Mat pano = new Mat())
+          {
+            if (!stitcher.Stitch(sourceMats, pano))
+              throw new Exception($"Failed to stitch images.");
+
+            return pano.ToBitmap();
+          }
+        }
+      }
+      catch (Exception)
+      {
+        throw;
+      }
+      finally
+      {
+        for(int i = 0; i < sourceMats.Size; i++)
+          sourceMats[i].Dispose();
+      }
+    }
+
+    public static void MakeGifFromImages(string outputPath, List<Bitmap> images, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
     {
       using (MagickImageCollection imageCollection = new MagickImageCollection())
       {
@@ -256,12 +387,9 @@ namespace IVAE.MediaManipulation
       using (Accord.Video.FFMPEG.VideoFileWriter vfw = new Accord.Video.FFMPEG.VideoFileWriter())
       {
         vfw.Open(outputPath, width, height, new Accord.Math.Rational(100, gcdAnimationDelay), Accord.Video.FFMPEG.VideoCodec.MPEG4);
-
+        
         using (MagickImageCollection imageCollection = new MagickImageCollection(gifPath))
         {
-          width = imageCollection[0].Width;
-          height = imageCollection[0].Height;
-
           for (int i = 0; i < imageCollection.Count; i++)
           {
             OnProgress?.Invoke(i / (float)imageCollection.Count);

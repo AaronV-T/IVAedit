@@ -27,12 +27,13 @@
 
     <Label Content="Font Size" HorizontalAlignment="Center" Margin="-80,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
     <Label Content="Gifs Per Line" HorizontalAlignment="Center" Margin="80,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
+    <CheckBox x:Name="checkboxAlignImages" Content="Align Images" HorizontalAlignment="Center" Margin="280,90,0,0" VerticalAlignment="Top" Width="110"/>
 
     <CheckBox x:Name="checkboxWriteFileNames" Content="Write File Names" HorizontalAlignment="Center" Margin="-280,105,0,0" VerticalAlignment="Top" Width="110"/>
-    <CheckBox x:Name="checkboxAlignImages" Content="Align Images" HorizontalAlignment="Center" Margin="280,105,0,0" VerticalAlignment="Top" Width="110"/>
-
+      
     <TextBox x:Name="tbxFontSize" HorizontalAlignment="Center" Height="25" Margin="-80,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
     <TextBox x:Name="tbxGifsPerLine" HorizontalAlignment="Center" Height="25" Margin="80,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
+    <ComboBox x:Name="cbImageAlignmentType" HorizontalAlignment="Center" Margin="280,105,0,0" VerticalAlignment="Top" Width="110"/>
 
     <TextBlock x:Name="tblckMessage" Text="" HorizontalAlignment="Center" Margin="0,130,0,0" VerticalAlignment="Top" Width="650" Height="25" TextWrapping="Wrap" TextAlignment="Center"/>
 
@@ -41,5 +42,7 @@
     <Button x:Name="btnCombineGifs" Content="Combine Gifs" HorizontalAlignment="Center" Margin="0,160,0,0" VerticalAlignment="Top" Width="100" Click="btnCombineGifs_Click"/>
     <Button x:Name="btnGifToGifv" Content="Gif to Gifv" HorizontalAlignment="Center" Margin="205,160,0,0" VerticalAlignment="Top" Width="100" Click="btnGifToGifv_Click"/>
     <Button x:Name="btnAlignImage" Content="Align Image" HorizontalAlignment="Center" Margin="410,160,0,0" VerticalAlignment="Top" Width="100" Click="btnAlignImage_Click"/>
+
+    <Button x:Name="btnStitchImages" Content="StitchImages" HorizontalAlignment="Center" Margin="0,185,0,0" VerticalAlignment="Top" Width="100" Click="btnStitchImages_Click"/>
   </Grid>
 </Window>

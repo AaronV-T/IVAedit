@@ -19,11 +19,16 @@ namespace IVAeditGUI
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
       this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
+      this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
 
       try
       {
-        Dictionary<string, string> settings = SettingsIO.LoadSettings(new List<string> { "XCoordinate", "YCoordinate", "Width", "Height", "FrameDelay", "FinalDelay", "Loops", "WriteFileNames", "FontSize", "GifsPerLine", "AlignImages" });
+        foreach (IVAE.MediaManipulation.ImageAlignmentType type in (IVAE.MediaManipulation.ImageAlignmentType[])Enum.GetValues(typeof(IVAE.MediaManipulation.ImageAlignmentType)))
+          this.mainWindow.cbImageAlignmentType.Items.Add(type.ToString());
+        this.mainWindow.cbImageAlignmentType.SelectedIndex = 0;
+
+        Dictionary<string, string> settings = SettingsIO.LoadSettings(new List<string> { "XCoordinate", "YCoordinate", "Width", "Height", "FrameDelay", "FinalDelay", "Loops", "WriteFileNames", "FontSize", "GifsPerLine", "AlignImages", "ImageAlignmentType" });
         if (settings.ContainsKey("XCoordinate"))
           mainWindow.tbxXCoordinate.Text = settings["XCoordinate"];
         if (settings.ContainsKey("YCoordinate"))
@@ -46,6 +51,8 @@ namespace IVAeditGUI
           mainWindow.tbxGifsPerLine.Text = settings["GifsPerLine"];
         if (settings.ContainsKey("AlignImages"))
           mainWindow.checkboxAlignImages.IsChecked= Convert.ToBoolean(settings["AlignImages"]);
+        if (settings.ContainsKey("ImageAlignmentType"))
+          mainWindow.cbImageAlignmentType.SelectedValue = settings["ImageAlignmentType"];
       }
       catch (Exception ex)
       {
@@ -60,13 +67,24 @@ namespace IVAeditGUI
       {
         mainWindow.SetMessage("Aligning image.");
 
+        IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
+        if (!Enum.TryParse(mainWindow.cbImageAlignmentType.SelectedItem.ToString(), out imageAlignmentType))
+          throw new ArgumentException($"Image alignment type is not valid.");
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "ImageAlignmentType", imageAlignmentType.ToString() }
+        });
+
         System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
         openFileDialog1.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
         openFileDialog1.Title = "Select image to align.";
         openFileDialog1.Multiselect = false;
 
         if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
           return;
+        }
 
         System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
         openFileDialog2.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
@@ -74,7 +92,10 @@ namespace IVAeditGUI
         openFileDialog2.Multiselect = false;
 
         if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
           return;
+        }
 
         IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
         taskHandler.OnChangeStep += ChangeCurrentStep;
@@ -84,7 +105,7 @@ namespace IVAeditGUI
         string outputPath = null;
         await Task.Factory.StartNew(() =>
         {
-          outputPath = taskHandler.AlignImage(openFileDialog1.FileName, openFileDialog2.FileName);
+          outputPath = taskHandler.AlignImage(openFileDialog1.FileName, openFileDialog2.FileName, imageAlignmentType);
         });
 
         mainWindow.SetMessage($"Image aligned '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
@@ -118,7 +139,10 @@ namespace IVAeditGUI
         openFileDialog.Multiselect = true;
 
         if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
           return;
+        }
 
         IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
         taskHandler.OnChangeStep += ChangeCurrentStep;
@@ -149,6 +173,7 @@ namespace IVAeditGUI
 
         int x = 0, y = 0, width = 0, height = 0, frameDelay = 0, finalDelay = 0, loops = 0, fontSize = 0;
         bool writeFileNames, alignImages;
+        IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
         if (mainWindow.tbxXCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxXCoordinate.Text, out x))
           throw new ArgumentException($"X coordinate is not a valid integer.");
         if (mainWindow.tbxYCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxYCoordinate.Text, out y))
@@ -167,6 +192,8 @@ namespace IVAeditGUI
         if (mainWindow.tbxFontSize.Text != string.Empty && !int.TryParse(mainWindow.tbxFontSize.Text, out fontSize))
           throw new ArgumentException($"Font size is not a valid integer.");
         alignImages = mainWindow.checkboxAlignImages.IsChecked.Value;
+        if (!Enum.TryParse(mainWindow.cbImageAlignmentType.SelectedItem.ToString(), out imageAlignmentType))
+          throw new ArgumentException($"Image alignment type is not valid.");
 
         if (finalDelay == 0)
           finalDelay = frameDelay;
@@ -181,7 +208,8 @@ namespace IVAeditGUI
           { "Loops", loops.ToString() },
           { "WriteFileNames", writeFileNames.ToString() },
           { "FontSize", fontSize.ToString() },
-          { "AlignImages", alignImages.ToString() }
+          { "AlignImages", alignImages.ToString() },
+          { "ImageAlignmentType", imageAlignmentType.ToString() }
         });
 
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
@@ -190,7 +218,10 @@ namespace IVAeditGUI
         openFileDialog.Multiselect = true;
 
         if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
           return;
+        }
 
         IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
         taskHandler.OnChangeStep += ChangeCurrentStep;
@@ -200,7 +231,7 @@ namespace IVAeditGUI
         string gifPath = null;
         await Task.Factory.StartNew(() =>
         {
-          gifPath = taskHandler.ConvertImagesToGif(openFileDialog.FileNames, x, y, width, height, frameDelay, finalDelay, loops, fontSize, writeFileNames, alignImages);
+          gifPath = taskHandler.ConvertImagesToGif(openFileDialog.FileNames, x, y, width, height, frameDelay, finalDelay, loops, fontSize, writeFileNames, alignImages, imageAlignmentType);
         });
 
         mainWindow.SetMessage($"Gif created '{gifPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
@@ -221,7 +252,10 @@ namespace IVAeditGUI
       openFileDialog.Multiselect = false;
 
       if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
         return;
+      }
 
       IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
       taskHandler.OnChangeStep += ChangeCurrentStep;
@@ -238,6 +272,36 @@ namespace IVAeditGUI
       System.Diagnostics.Process.Start(gifvPath);
     }
 
+    public async void StitchImages()
+    {
+      mainWindow.SetMessage("Stitching images.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+      openFileDialog.Title = "Select image files.";
+      openFileDialog.Multiselect = true;
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.StitchImages(openFileDialog.FileNames);
+      });
+
+      mainWindow.SetMessage($"Stitched image created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
     public async void Test()
     {
       System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
@@ -250,7 +314,10 @@ namespace IVAeditGUI
       taskHandler.OnProgressUpdate += ProgressUpdate;
 
       if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
         return;
+      }
 
       await Task.Factory.StartNew(() =>
       {
