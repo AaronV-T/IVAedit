@@ -25,9 +25,11 @@ namespace IVAeditGUI
       OnCombineGifsButtonClick, 
       OnImagesToGifButtonClick, 
       OnGifToGifvButtonClick,
+      OnNormalizeVolumeButtonClick,
       OnStabilizeVideoButtonClick,
       OnStitchImagesButtonClick, 
-      OnTestButtonClick;
+      OnTestButtonClick,
+      OnTrimVideoButtonClick;
 
     public MainWindow()
     {
@@ -68,6 +70,11 @@ namespace IVAeditGUI
       OnGifToGifvButtonClick?.Invoke();
     }
 
+    private void btnNormalizeVolume_Click(object sender, RoutedEventArgs e)
+    {
+      OnNormalizeVolumeButtonClick?.Invoke();
+    }
+
     private void btnStabilizeVideo_Click(object sender, RoutedEventArgs e)
     {
       OnStabilizeVideoButtonClick?.Invoke();
@@ -81,6 +88,11 @@ namespace IVAeditGUI
     private void btnTest_Click(object sender, RoutedEventArgs e)
     {
       OnTestButtonClick?.Invoke();
+    }
+
+    private void btnTrimVideo_Click(object sender, RoutedEventArgs e)
+    {
+      OnTrimVideoButtonClick?.Invoke();
     }
   }
 }

@@ -19,9 +19,11 @@ namespace IVAeditGUI
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
       this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
+      this.mainWindow.OnNormalizeVolumeButtonClick += NormalizeVolume;
       this.mainWindow.OnStabilizeVideoButtonClick += StabilizeVideo;
       this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
+      this.mainWindow.OnTrimVideoButtonClick += Trimvideo;
 
       try
       {
@@ -29,7 +31,7 @@ namespace IVAeditGUI
           this.mainWindow.cbImageAlignmentType.Items.Add(type.ToString());
         this.mainWindow.cbImageAlignmentType.SelectedIndex = 0;
 
-        Dictionary<string, string> settings = SettingsIO.LoadSettings(new List<string> { "XCoordinate", "YCoordinate", "Width", "Height", "FrameDelay", "FinalDelay", "Loops", "WriteFileNames", "FontSize", "GifsPerLine", "AlignImages", "ImageAlignmentType" });
+        Dictionary<string, string> settings = SettingsIO.LoadSettings(/*new List<string> { "XCoordinate", "YCoordinate", "Width", "Height", "FrameDelay", "FinalDelay", "Loops", "WriteFileNames", "FontSize", "GifsPerLine", "AlignImages", "ImageAlignmentType", "StartTime", "EndTime" }*/);
         if (settings.ContainsKey("XCoordinate"))
           mainWindow.tbxXCoordinate.Text = settings["XCoordinate"];
         if (settings.ContainsKey("YCoordinate"))
@@ -54,6 +56,10 @@ namespace IVAeditGUI
           mainWindow.checkboxAlignImages.IsChecked= Convert.ToBoolean(settings["AlignImages"]);
         if (settings.ContainsKey("ImageAlignmentType"))
           mainWindow.cbImageAlignmentType.SelectedValue = settings["ImageAlignmentType"];
+        if (settings.ContainsKey("StartTime"))
+          mainWindow.tbxStartTime.Text = settings["StartTime"];
+        if (settings.ContainsKey("EndTime"))
+          mainWindow.tbxEndTime.Text = settings["EndTime"];
       }
       catch (Exception ex)
       {
@@ -281,6 +287,42 @@ namespace IVAeditGUI
       }
     }
 
+    public async void NormalizeVolume()
+    {
+      try
+      {
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = "Audio or Video File|*.avi;*.mov;*.mp3;*.mp4;*.webm";
+        openFileDialog.Title = "Select Video or Audio File.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.NormalizeVolume(openFileDialog.FileName);
+        });
+
+        mainWindow.SetMessage($"File with normalized audio created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
     public async void StabilizeVideo()
     {
       try
@@ -315,61 +357,121 @@ namespace IVAeditGUI
         mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
         Console.WriteLine(ex);
       }
-}
+    }
 
     public async void StitchImages()
     {
-      mainWindow.SetMessage("Stitching images.");
-
-      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-      openFileDialog.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
-      openFileDialog.Title = "Select image files.";
-      openFileDialog.Multiselect = true;
-
-      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-      taskHandler.OnChangeStep += ChangeCurrentStep;
-      taskHandler.OnProgressUpdate += ProgressUpdate;
-
-      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      try
       {
-        mainWindow.SetMessage("Canceled.");
-        return;
+        mainWindow.SetMessage("Stitching images.");
+
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+        openFileDialog.Title = "Select image files.";
+        openFileDialog.Multiselect = true;
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.StitchImages(openFileDialog.FileNames);
+        });
+
+        mainWindow.SetMessage($"Stitched image created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
       }
-
-      DateTime start = DateTime.Now;
-      string outputPath = null;
-      await Task.Factory.StartNew(() =>
+      catch (Exception ex)
       {
-        outputPath = taskHandler.StitchImages(openFileDialog.FileNames);
-      });
-
-      mainWindow.SetMessage($"Stitched image created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-      System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
     }
 
     public async void Test()
     {
-      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-      openFileDialog.Filter = "Files|*.*";
-      openFileDialog.Title = "Select files.";
-      openFileDialog.Multiselect = true;
-
-      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-      taskHandler.OnChangeStep += ChangeCurrentStep;
-      taskHandler.OnProgressUpdate += ProgressUpdate;
-
-      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      try
       {
-        mainWindow.SetMessage("Canceled.");
-        return;
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = "Files|*.*";
+        openFileDialog.Title = "Select files.";
+        openFileDialog.Multiselect = true;
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        await Task.Factory.StartNew(() =>
+        {
+          taskHandler.Test(openFileDialog.FileNames);
+        });
+
+        mainWindow.SetMessage($"Finished.");
       }
-
-      await Task.Factory.StartNew(() =>
+      catch (Exception ex)
       {
-        taskHandler.Test(openFileDialog.FileNames);
-      });
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
 
-      mainWindow.SetMessage($"Finished.");
+    public async void Trimvideo()
+    {
+      try
+      {
+        string startTime = mainWindow.tbxStartTime.Text;
+        string endTime = mainWindow.tbxEndTime.Text;
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "StartTime", startTime },
+          { "EndTime", endTime }
+        });
+
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = "Video File|*.avi;*.mov;*.mp4;*.webm";
+        openFileDialog.Title = "Select Video.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.TrimVideo(openFileDialog.FileName, startTime, endTime);
+        });
+
+        mainWindow.SetMessage($"Trimmed video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
     }
 
     private void ChangeCurrentStep(string currentStep)

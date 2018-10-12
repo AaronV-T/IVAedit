@@ -114,7 +114,25 @@ namespace IVAE.MediaManipulation
       OnChangeStep?.Invoke("Converting GIF to GIFV");
 
       string outputPath = $@"{System.IO.Path.GetDirectoryName(gifFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(gifFilePath)}.gifv";
-      VideoManipulator.MakeGifvFromGif(outputPath, gifFilePath);
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.MakeGifvFromGif(outputPath, gifFilePath);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
+    public string NormalizeVolume(string filePath)
+    {
+      OnChangeStep?.Invoke("Normalizing Audio");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Normalized{System.IO.Path.GetExtension(filePath)}";
+
+      AudioManipulator audioManipulator = new AudioManipulator();
+      audioManipulator.OnProgress += ProgressUpdate;
+      audioManipulator.NormalizeVolume(outputPath, filePath);
+      audioManipulator.OnProgress -= ProgressUpdate;
 
       return outputPath;
     }
@@ -124,7 +142,25 @@ namespace IVAE.MediaManipulation
       OnChangeStep?.Invoke("Stabilizing Video");
 
       string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Stabilized{System.IO.Path.GetExtension(videoFilePath)}";
-      VideoManipulator.StabilizeVideo(outputPath, videoFilePath);
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.StabilizeVideo(outputPath, videoFilePath);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
+    public string TrimVideo(string videoFilePath, string startTime, string endTime)
+    {
+      OnChangeStep?.Invoke("Trimming Video");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Trimmed{System.IO.Path.GetExtension(videoFilePath)}";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.TrimVideo(outputPath, videoFilePath, startTime, endTime);
+      videoManipulator.OnProgress -= ProgressUpdate;
 
       return outputPath;
     }
@@ -158,7 +194,7 @@ namespace IVAE.MediaManipulation
     public object Test(string[] fileNames)
     {
       foreach (string file in fileNames)
-        VideoManipulator.Test(file);
+        new VideoManipulator().Test(file);
 
       return null;
     }

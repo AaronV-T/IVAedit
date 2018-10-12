@@ -7,10 +7,19 @@ using Accord.Video.FFMPEG;
 
 namespace IVAE.MediaManipulation
 {
-  public static class VideoManipulator
+  public class VideoManipulator
   {
-    public static void MakeGifvFromGif(string outputPath, string gifPath)
+    public event Action<float> OnProgress;
+    private double currentVideoDurationInMS = -1;
+    private int totalSteps = -1, currentStep = -1;
+
+    public void MakeGifvFromGif(string outputPath, string gifPath)
     {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(gifPath))
+        throw new ArgumentNullException(nameof(gifPath));
+
       string outputPathMP4 = $@"{System.IO.Path.GetDirectoryName(outputPath)}\{System.IO.Path.GetFileNameWithoutExtension(outputPath)}.mp4";
 
       if (System.IO.File.Exists(outputPathMP4))
@@ -18,8 +27,9 @@ namespace IVAE.MediaManipulation
 
       // movflags – This option optimizes the structure of the MP4 file so the browser can load it as quickly as possible.
       // pix_fmt – MP4 videos store pixels in different formats. We include this option to specify a specific format which has maximum compatibility across all browsers.
-      // vf – MP4 videos using H.264 need to have a dimensions that are divisible by 2.This option ensures that’s the case.
-      FFmpegProcessRunner.Run($"-i \"{gifPath}\" -movflags faststart -pix_fmt yuv420p -vf \"scale = trunc(iw / 2) * 2:trunc(ih / 2) * 2\" \"{outputPathMP4}\"");
+      // vf – MP4 videos using H.264 need to have a dimensions that are divisible by 2. This option ensures that’s the case.
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.Run($"-i \"{gifPath}\" -movflags faststart -pix_fmt yuv420p -vf \"scale = trunc(iw / 2) * 2:trunc(ih / 2) * 2\" \"{outputPathMP4}\"");
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
@@ -27,15 +37,51 @@ namespace IVAE.MediaManipulation
       System.IO.File.Move(outputPathMP4, outputPath);
     }
 
-    public static void StabilizeVideo(string outputPath, string videoPath)
+    public void StabilizeVideo(string outputPath, string videoPath)
     {
-      //if (System.IO.File.Exists(outputPath))
-        //System.IO.File.Delete(outputPath);
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
 
-      FFmpegProcessRunner.Run($"-i \"{videoPath}\" -vf deshake \"{outputPath}\"");
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf deshake \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
-    public static void Test(string path)
+    public void TrimVideo(string outputPath, string videoPath, string startTime, string endTime)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+      
+      string startArg = string.Empty;
+      if (!string.IsNullOrEmpty(startTime))
+        startArg = $"-ss {startTime} ";
+
+      string endArg = string.Empty;
+      if (!string.IsNullOrEmpty(endTime))
+        endArg = $"-to {endTime} ";
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.Run($"-i \"{videoPath}\" {startArg}{endArg}-c copy \"{outputPath}\"");
+    }
+
+    public void Test(string path)
     {
       using (VideoFileReader vfr = new VideoFileReader())
       {
@@ -50,6 +96,23 @@ namespace IVAE.MediaManipulation
 
         vfr.Close();
       }
+    }
+
+    private void DurationMessageReceived(double duration)
+    {
+      currentVideoDurationInMS = duration;
+    }
+
+    private void TimeMessageReceived(double time)
+    {
+      if (currentVideoDurationInMS <= 0 || currentStep <= 0 || totalSteps <= 0)
+        return;
+
+      float baseProgress = (currentStep - 1) / (float)totalSteps;
+      float currentStepProgress = (float)(time / currentVideoDurationInMS);
+      float totalProgress = baseProgress + (currentStepProgress / totalSteps);
+
+      OnProgress?.Invoke(totalProgress);
     }
   }
 }

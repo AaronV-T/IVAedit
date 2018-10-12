@@ -10,7 +10,7 @@ namespace IVAeditGUI
   {
     const string settingsFilePath = "settings.dat";
 
-    public static Dictionary<string, string> LoadSettings(List<string> settingsNames)
+    public static Dictionary<string, string> LoadSettings(List<string> settingsNames = null)
     {
       Dictionary<string, string> settings = new Dictionary<string, string>();
 
@@ -27,7 +27,7 @@ namespace IVAeditGUI
           if (splitLine.Length < 2)
             continue;
 
-          if (settingsNames.Contains(splitLine[0]))
+          if (settingsNames == null || settingsNames.Contains(splitLine[0]))
             settings.Add(splitLine[0], line.Substring(splitLine[0].Length + 1));
         }
       }
