@@ -11,26 +11,47 @@ namespace IVAE.MediaManipulation
     public event Action<string> OnChangeStep;
     public event Action<float> OnProgressUpdate;
 
+    public string AdjustVolume(string filePath, string volume)
+    {
+      OnChangeStep?.Invoke("Adjusting Volume");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_AdjustedVolume{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
+
+      AudioManipulator audioManipulator = new AudioManipulator();
+      audioManipulator.OnProgress += ProgressUpdate;
+      audioManipulator.AdjustVolume(outputPath, filePath, volume);
+      audioManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
     public string AlignImage(string imageToAlignPath, string referenceImagePath, ImageAlignmentType imageAlignmentType)
     {
+      ImageManipulator imageManipulator = new ImageManipulator();
+      imageManipulator.OnProgress += ProgressUpdate;
+
       using (System.Drawing.Bitmap imageToAlign = new System.Drawing.Bitmap(imageToAlignPath))
       using (System.Drawing.Bitmap referenceImage = new System.Drawing.Bitmap(referenceImagePath))
-      using (System.Drawing.Bitmap warpedImage = ImageManipulator.GetAlignedImage(imageToAlign, referenceImage, imageAlignmentType))
+      using (System.Drawing.Bitmap warpedImage = imageManipulator.GetAlignedImage(imageToAlign, referenceImage, imageAlignmentType))
       {
         string outputPath = $@"{System.IO.Path.GetDirectoryName(imageToAlignPath)}\{System.IO.Path.GetFileNameWithoutExtension(imageToAlignPath)}_Aligned{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(imageToAlignPath)}";
         warpedImage.Save(outputPath);
+
+        imageManipulator.OnProgress -= ProgressUpdate;
         return outputPath;
       }
     }
 
     public string CombineGifs(string[] fileNames, int gifsPerLine)
     {
+      OnChangeStep?.Invoke("Combining GIFs.");
+
       string newGifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Combined{DateTime.Now.ToString("yyyMMdd_HHmmss")}.gif";
 
-      OnChangeStep?.Invoke("Combining GIFs.");
-      ImageManipulator.OnProgress += ProgressUpdate;
-      ImageManipulator.CombineGifs(newGifPath, fileNames.ToList(), gifsPerLine);
-      ImageManipulator.OnProgress -= ProgressUpdate;
+      ImageManipulator imageManipulator = new ImageManipulator();
+      imageManipulator.OnProgress += ProgressUpdate;
+      imageManipulator.CombineGifs(newGifPath, fileNames.ToList(), gifsPerLine);
+      imageManipulator.OnProgress -= ProgressUpdate;
 
       return newGifPath;
     }
@@ -41,6 +62,8 @@ namespace IVAE.MediaManipulation
       //System.Drawing.Bitmap tempImage = null;
       try
       {
+        ImageManipulator imageManipulator = new ImageManipulator();
+
         if (alignImages || writeFileNames || width != 0 || height != 0)
         {
           OnChangeStep?.Invoke("Editing Images");
@@ -57,7 +80,8 @@ namespace IVAE.MediaManipulation
               if (!alignImages || imageAlignmentType != ImageAlignmentType.CROP || i == 0)
               {
                 DateTime start = DateTime.Now;
-                System.Drawing.Bitmap croppedImage = ImageManipulator.GetCroppedImage(sourceImages[i], x, y, width, height);
+
+                System.Drawing.Bitmap croppedImage = imageManipulator.GetCroppedImage(sourceImages[i], x, y, width, height);
                 Console.WriteLine($"GetCroppedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
                 sourceImages[i].Dispose();
                 sourceImages[i] = croppedImage;
@@ -68,7 +92,7 @@ namespace IVAE.MediaManipulation
             if (alignImages && i > 0)
             {
               DateTime start = DateTime.Now;
-              System.Drawing.Bitmap alignedImage = ImageManipulator.GetAlignedImage(sourceImages[i], sourceImages[i - 1], imageAlignmentType);
+              System.Drawing.Bitmap alignedImage = imageManipulator.GetAlignedImage(sourceImages[i], sourceImages[i - 1], imageAlignmentType);
               Console.WriteLine($"GetAlignedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
               sourceImages[i].Dispose();
               sourceImages[i] = alignedImage;
@@ -79,7 +103,7 @@ namespace IVAE.MediaManipulation
             {
               // Create an image with the drawn text.
               DateTime start = DateTime.Now;
-              System.Drawing.Bitmap editedImage = ImageManipulator.GetImageWithDrawnText(sourceImages[i], System.IO.Path.GetFileNameWithoutExtension(fileNames[i]), fontSize);
+              System.Drawing.Bitmap editedImage = imageManipulator.GetImageWithDrawnText(sourceImages[i], System.IO.Path.GetFileNameWithoutExtension(fileNames[i]), fontSize);
               Console.WriteLine($"GetImageWithDrawnText took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
 
               // Dispose the current raw image and store the image with drawn text.
@@ -92,9 +116,9 @@ namespace IVAE.MediaManipulation
         // Add the images to a gif.
         OnChangeStep?.Invoke("Adding Images to GIF");
         string gifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Converted{DateTime.Now.ToString("yyyMMdd_HHmmss")}.gif";
-        ImageManipulator.OnProgress += ProgressUpdate;
-        ImageManipulator.MakeGifFromImages(gifPath, sourceImages, frameDelay, finalDelay, loops);
-        ImageManipulator.OnProgress -= ProgressUpdate;
+        imageManipulator.OnProgress += ProgressUpdate;
+        imageManipulator.MakeGifFromImages(gifPath, sourceImages, frameDelay, finalDelay, loops);
+        imageManipulator.OnProgress -= ProgressUpdate;
 
         return gifPath;
       }
@@ -123,11 +147,52 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
+    public string CropImageOrVideo(string filePath, int x, int y, int width, int height)
+    {
+      OnChangeStep?.Invoke("Cropping");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Cropped{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
+
+      MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
+      if (mediaType == MediaType.IMAGE)
+      {
+        ImageManipulator imageManipulator = new ImageManipulator();
+        imageManipulator.OnProgress += ProgressUpdate;
+        imageManipulator.CropImage(outputPath, filePath, x, y, width, height);
+        imageManipulator.OnProgress -= ProgressUpdate;
+      }
+      else if (mediaType == MediaType.VIDEO)
+      {
+        VideoManipulator videoManipulator = new VideoManipulator();
+        videoManipulator.OnProgress += ProgressUpdate;
+        videoManipulator.CropVideo(outputPath, filePath, x, y, width, height);
+        videoManipulator.OnProgress -= ProgressUpdate;
+      }
+      else
+        throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
+
+      return outputPath;
+    }
+
+    public string ExtractAudioFromVideo(string videoFilePath)
+    {
+      OnChangeStep?.Invoke("Extracting Audio");
+
+      string outputPathWithoutExtension = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Extracted{DateTime.Now.ToString("yyyyMMdd_HHmmss")}";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      string outputPath = videoManipulator.ExtractAudioFromVideo(outputPathWithoutExtension, videoFilePath);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
     public string NormalizeVolume(string filePath)
     {
       OnChangeStep?.Invoke("Normalizing Audio");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Normalized{System.IO.Path.GetExtension(filePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Normalized{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
 
       AudioManipulator audioManipulator = new AudioManipulator();
       audioManipulator.OnProgress += ProgressUpdate;
@@ -141,25 +206,11 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Stabilizing Video");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Stabilized{System.IO.Path.GetExtension(videoFilePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Stabilized{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(videoFilePath)}";
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
       videoManipulator.StabilizeVideo(outputPath, videoFilePath);
-      videoManipulator.OnProgress -= ProgressUpdate;
-
-      return outputPath;
-    }
-
-    public string TrimVideo(string videoFilePath, string startTime, string endTime)
-    {
-      OnChangeStep?.Invoke("Trimming Video");
-
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Trimmed{System.IO.Path.GetExtension(videoFilePath)}";
-
-      VideoManipulator videoManipulator = new VideoManipulator();
-      videoManipulator.OnProgress += ProgressUpdate;
-      videoManipulator.TrimVideo(outputPath, videoFilePath, startTime, endTime);
       videoManipulator.OnProgress -= ProgressUpdate;
 
       return outputPath;
@@ -173,10 +224,15 @@ namespace IVAE.MediaManipulation
         foreach (string file in fileNames)
           bitmaps.Add(new System.Drawing.Bitmap(file));
 
-        using (System.Drawing.Bitmap stitchedImage = ImageManipulator.GetStitchedImage(bitmaps))
+        ImageManipulator imageManipulator = new ImageManipulator();
+        imageManipulator.OnProgress += ProgressUpdate;
+
+        using (System.Drawing.Bitmap stitchedImage = imageManipulator.GetStitchedImage(bitmaps))
         {
-          string outputPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Stitched{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(fileNames[0])}";
+          string outputPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Stitched{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(fileNames[0])}";
           stitchedImage.Save(outputPath);
+
+          imageManipulator.OnProgress -= ProgressUpdate;
           return outputPath;
         }
       }
@@ -197,6 +253,20 @@ namespace IVAE.MediaManipulation
         new VideoManipulator().Test(file);
 
       return null;
+    }
+
+    public string TrimAudioOrVideo(string filePath, string startTime, string endTime)
+    {
+      OnChangeStep?.Invoke("Trimming File");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Trimmed{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.Trim(outputPath, filePath, startTime, endTime);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
     }
 
     private void ProgressUpdate(float percent)

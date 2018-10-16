@@ -20,16 +20,19 @@ namespace IVAeditGUI
   /// </summary>
   public partial class MainWindow : Window
   {
-    public event Action 
-      OnAlignImageButtonClick, 
-      OnCombineGifsButtonClick, 
-      OnImagesToGifButtonClick, 
+    public event Action
+      OnAdjustVolumeButtonClick,
+      OnAlignImageButtonClick,
+      OnCombineGifsButtonClick,
+      OnCropButtonClick,
+      OnExtractAudioButtonClick,
+      OnImagesToGifButtonClick,
       OnGifToGifvButtonClick,
       OnNormalizeVolumeButtonClick,
       OnStabilizeVideoButtonClick,
-      OnStitchImagesButtonClick, 
+      OnStitchImagesButtonClick,
       OnTestButtonClick,
-      OnTrimVideoButtonClick;
+      OnTrimButtonClick;
 
     public MainWindow()
     {
@@ -50,6 +53,11 @@ namespace IVAeditGUI
       }
     }
 
+    private void btnAdjustVolume_Click(object sender, RoutedEventArgs e)
+    {
+      OnAdjustVolumeButtonClick?.Invoke();
+    }
+
     private void btnAlignImage_Click(object sender, RoutedEventArgs e)
     {
       OnAlignImageButtonClick?.Invoke();
@@ -58,6 +66,16 @@ namespace IVAeditGUI
     private void btnCombineGifs_Click(object sender, RoutedEventArgs e)
     {
       OnCombineGifsButtonClick?.Invoke();
+    }
+
+    private void btnCrop_Click(object sender, RoutedEventArgs e)
+    {
+      OnCropButtonClick?.Invoke();
+    }
+
+    private void btnExtractAudio_Click(object sender, RoutedEventArgs e)
+    {
+      OnExtractAudioButtonClick?.Invoke();
     }
 
     private void btnImagesToGif_Click(object sender, RoutedEventArgs e)
@@ -90,9 +108,9 @@ namespace IVAeditGUI
       OnTestButtonClick?.Invoke();
     }
 
-    private void btnTrimVideo_Click(object sender, RoutedEventArgs e)
+    private void btnTrim_Click(object sender, RoutedEventArgs e)
     {
-      OnTrimVideoButtonClick?.Invoke();
+      OnTrimButtonClick?.Invoke();
     }
   }
 }

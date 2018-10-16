@@ -12,12 +12,11 @@ using Emgu.CV.Util;
 
 namespace IVAE.MediaManipulation
 {
-  public static class ImageManipulator
+  public class ImageManipulator
   {
-    public delegate void ProgressDelegate(float percentage);
-    public static event ProgressDelegate OnProgress;
+    public event Action<float> OnProgress;
 
-    public static void CombineGifs(string outputPath, List<string> gifPaths, int gifsPerLine)
+    public void CombineGifs(string outputPath, List<string> gifPaths, int gifsPerLine)
     {
       if (outputPath == null)
         throw new ArgumentNullException(nameof(outputPath));
@@ -129,7 +128,7 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static void CropImage(string imagePath, int x, int y, int width, int height)
+    public void CropImage(string outputPath, string imagePath, int x, int y, int width, int height)
     {
       System.Drawing.Bitmap croppedImage;
       using (System.Drawing.Bitmap originalImage = new System.Drawing.Bitmap(imagePath))
@@ -137,11 +136,11 @@ namespace IVAE.MediaManipulation
         croppedImage = GetCroppedImage(originalImage, x, y, width, height);
       }
 
-      croppedImage.Save(imagePath);
+      croppedImage.Save(outputPath);
       croppedImage.Dispose();
     }
 
-    public static void DrawTextOnImage(IMagickImage image, string text, int fontSize)
+    public void DrawTextOnImage(IMagickImage image, string text, int fontSize)
     {
       if (image == null)
         throw new ArgumentNullException(nameof(image));
@@ -159,7 +158,7 @@ namespace IVAE.MediaManipulation
         .Draw(image);
     }
 
-    public static void DrawTextOnImage(string imagePath, string text, int fontSize)
+    public void DrawTextOnImage(string imagePath, string text, int fontSize)
     {
       DateTime start = DateTime.Now;
       using (MagickImage image = new MagickImage(imagePath))
@@ -170,7 +169,7 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static Bitmap GetAlignedImage(Bitmap imageToAlign, Bitmap referenceImage, ImageAlignmentType imageAlignmentType)
+    public Bitmap GetAlignedImage(Bitmap imageToAlign, Bitmap referenceImage, ImageAlignmentType imageAlignmentType)
     {
       if (imageAlignmentType == ImageAlignmentType.CROP)
       {
@@ -226,7 +225,7 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static Bitmap GetCroppedImage(Bitmap image, int x, int y, int width, int height)
+    public Bitmap GetCroppedImage(Bitmap image, int x, int y, int width, int height)
     {
       if (x < 0)
         throw new ArgumentOutOfRangeException(nameof(x));
@@ -253,7 +252,7 @@ namespace IVAE.MediaManipulation
     /// <param name="modelImage">The model image</param>
     /// <param name="observedImage">The observed image</param>
     /// <returns>The model image and observed image, the matched features and homography projection.</returns>
-    public static Bitmap GetImageWithDrawnMatches(Bitmap modelImage, Bitmap observedImage, MatchingTechnique matchingTechnique)
+    public Bitmap GetImageWithDrawnMatches(Bitmap modelImage, Bitmap observedImage, MatchingTechnique matchingTechnique)
     {
       VectorOfKeyPoint modelKeyPoints;
       VectorOfKeyPoint observedKeyPoints;
@@ -287,7 +286,7 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static Bitmap GetImageWithDrawnText(Bitmap image, string text, int fontSize)
+    public Bitmap GetImageWithDrawnText(Bitmap image, string text, int fontSize)
     {
       DateTime start = DateTime.Now;
       using (MagickImage mi = new MagickImage(image))
@@ -297,7 +296,7 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static Bitmap GetStitchedImage(List<Bitmap> sourceImages)
+    public Bitmap GetStitchedImage(List<Bitmap> sourceImages)
     {
       VectorOfMat sourceMats = new VectorOfMat();
       try
@@ -327,7 +326,7 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public static void MakeGifFromImages(string outputPath, List<Bitmap> images, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
+    public void MakeGifFromImages(string outputPath, List<Bitmap> images, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
     {
       using (MagickImageCollection imageCollection = new MagickImageCollection())
       {
@@ -359,32 +358,6 @@ namespace IVAE.MediaManipulation
 
         //ImageMagick.ImageOptimizers.GifOptimizer gifOptimizer = new ImageMagick.ImageOptimizers.GifOptimizer(); does nothing
         //gifOptimizer.LosslessCompress(outputPath);
-      }
-    }
-
-    public static void MakeGifvFromImages(string outputPath, List<Bitmap> images, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
-    {
-      int width = images[0].Width;
-      int height = images[0].Height;
-
-      using (Accord.Video.FFMPEG.VideoFileWriter vfw = new Accord.Video.FFMPEG.VideoFileWriter())
-      {
-        vfw.Open(outputPath, width, height, new Accord.Math.Rational(100, animationDelay), Accord.Video.FFMPEG.VideoCodec.MPEG4);
-
-        for (int i = 0; i < images.Count; i++)
-        {
-          OnProgress?.Invoke(i / (float)images.Count);
-
-          if (i < images.Count - 1)
-            vfw.WriteVideoFrame(images[i]);
-          else
-          {
-            for (int j = 0; j < finalFrameAnimationDelay / animationDelay; j++)
-              vfw.WriteVideoFrame(images[i]);
-          }
-        }
-
-        vfw.Close();
       }
     }
   }

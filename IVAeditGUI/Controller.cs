@@ -15,15 +15,18 @@ namespace IVAeditGUI
     {
       this.mainWindow = mainWindow;
 
+      this.mainWindow.OnAdjustVolumeButtonClick += AdjustVolume;
       this.mainWindow.OnAlignImageButtonClick += AlignImage;
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
+      this.mainWindow.OnCropButtonClick += Crop;
       this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
+      this.mainWindow.OnExtractAudioButtonClick += ExtractAudio;
       this.mainWindow.OnNormalizeVolumeButtonClick += NormalizeVolume;
       this.mainWindow.OnStabilizeVideoButtonClick += StabilizeVideo;
       this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
-      this.mainWindow.OnTrimVideoButtonClick += Trimvideo;
+      this.mainWindow.OnTrimButtonClick += Trim;
 
       try
       {
@@ -31,7 +34,7 @@ namespace IVAeditGUI
           this.mainWindow.cbImageAlignmentType.Items.Add(type.ToString());
         this.mainWindow.cbImageAlignmentType.SelectedIndex = 0;
 
-        Dictionary<string, string> settings = SettingsIO.LoadSettings(/*new List<string> { "XCoordinate", "YCoordinate", "Width", "Height", "FrameDelay", "FinalDelay", "Loops", "WriteFileNames", "FontSize", "GifsPerLine", "AlignImages", "ImageAlignmentType", "StartTime", "EndTime" }*/);
+        Dictionary<string, string> settings = SettingsIO.LoadSettings();
         if (settings.ContainsKey("XCoordinate"))
           mainWindow.tbxXCoordinate.Text = settings["XCoordinate"];
         if (settings.ContainsKey("YCoordinate"))
@@ -60,10 +63,54 @@ namespace IVAeditGUI
           mainWindow.tbxStartTime.Text = settings["StartTime"];
         if (settings.ContainsKey("EndTime"))
           mainWindow.tbxEndTime.Text = settings["EndTime"];
+        if (settings.ContainsKey("Volume"))
+          mainWindow.tbxVolume.Text = settings["Volume"];
       }
       catch (Exception ex)
       {
         mainWindow.SetMessage($"Error: {ex.Message}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void AdjustVolume()
+    {
+      try
+      {
+        string volume = mainWindow.tbxVolume.Text;
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "Volume", volume }
+        });
+
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select audio or video file.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.AdjustVolume(openFileDialog.FileName, volume);
+        });
+
+        mainWindow.SetMessage($"File with ajusted volume created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
         Console.WriteLine(ex);
       }
     }
@@ -83,7 +130,7 @@ namespace IVAeditGUI
         });
 
         System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog1.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+        openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
         openFileDialog1.Title = "Select image to align.";
         openFileDialog1.Multiselect = false;
 
@@ -94,7 +141,7 @@ namespace IVAeditGUI
         }
 
         System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog2.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+        openFileDialog2.Filter = $"Images|{GetImageFormatsFilterString()}";
         openFileDialog2.Title = "Select reference image.";
         openFileDialog2.Multiselect = false;
 
@@ -141,7 +188,7 @@ namespace IVAeditGUI
         });
 
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Gifs|*.GIF";
+        openFileDialog.Filter = "Gifs|*.gif";
         openFileDialog.Title = "Select GIF files.";
         openFileDialog.Multiselect = true;
 
@@ -220,7 +267,7 @@ namespace IVAeditGUI
         });
 
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+        openFileDialog.Filter = $"Images|{GetImageFormatsFilterString()}";
         openFileDialog.Title = "Select image files.";
         openFileDialog.Multiselect = true;
 
@@ -287,12 +334,101 @@ namespace IVAeditGUI
       }
     }
 
+    public async void Crop()
+    {
+      try
+      {
+        int x = 0, y = 0, width = 0, height = 0;
+        if (mainWindow.tbxXCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxXCoordinate.Text, out x))
+          throw new ArgumentException($"X coordinate is not a valid integer.");
+        if (mainWindow.tbxYCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxYCoordinate.Text, out y))
+          throw new ArgumentException($"Y coordinate is not a valid integer.");
+        if (mainWindow.tbxWidth.Text != string.Empty && !int.TryParse(mainWindow.tbxWidth.Text, out width))
+          throw new ArgumentException($"Width is not a valid integer.");
+        if (mainWindow.tbxHeight.Text != string.Empty && !int.TryParse(mainWindow.tbxHeight.Text, out height))
+          throw new ArgumentException($"Height is not a valid integer.");
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "XCoordinate", x.ToString() },
+          { "YCoordinate", y.ToString() },
+          { "Width", width.ToString() },
+          { "Height", height.ToString() }
+        });
+
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select Image or Video File.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.CropImageOrVideo(openFileDialog.FileName, x, y, width, height);
+        });
+
+        mainWindow.SetMessage($"Cropped file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void ExtractAudio()
+    {
+      try
+      {
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select video file.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.ExtractAudioFromVideo(openFileDialog.FileName);
+        });
+
+        mainWindow.SetMessage($"Extracted audio file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
     public async void NormalizeVolume()
     {
       try
       {
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Audio or Video File|*.avi;*.mov;*.mp3;*.mp4;*.webm";
+        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
         openFileDialog.Title = "Select Video or Audio File.";
         openFileDialog.Multiselect = false;
 
@@ -328,7 +464,7 @@ namespace IVAeditGUI
       try
       {
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Video File|*.avi;*.mov;*.mp4;*.webm";
+        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
         openFileDialog.Title = "Select Video.";
         openFileDialog.Multiselect = false;
 
@@ -366,7 +502,7 @@ namespace IVAeditGUI
         mainWindow.SetMessage("Stitching images.");
 
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Images (*.BMP;*.JPG;*.PNG)|*.BMP;*.JPG;*.PNG";
+        openFileDialog.Filter = $"Images|{GetImageFormatsFilterString()}";
         openFileDialog.Title = "Select image files.";
         openFileDialog.Multiselect = true;
 
@@ -430,7 +566,7 @@ namespace IVAeditGUI
       }
     }
 
-    public async void Trimvideo()
+    public async void Trim()
     {
       try
       {
@@ -443,8 +579,8 @@ namespace IVAeditGUI
         });
 
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Video File|*.avi;*.mov;*.mp4;*.webm";
-        openFileDialog.Title = "Select Video.";
+        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select audio or video file.";
         openFileDialog.Multiselect = false;
 
         if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
@@ -461,7 +597,7 @@ namespace IVAeditGUI
         string outputPath = null;
         await Task.Factory.StartNew(() =>
         {
-          outputPath = taskHandler.TrimVideo(openFileDialog.FileName, startTime, endTime);
+          outputPath = taskHandler.TrimAudioOrVideo(openFileDialog.FileName, startTime, endTime);
         });
 
         mainWindow.SetMessage($"Trimmed video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
@@ -483,6 +619,33 @@ namespace IVAeditGUI
     private void ProgressUpdate(float percent)
     {
       mainWindow.SetMessage($"{CurrentStep}: {percent.ToString("P2")}");
+    }
+
+    private string GetAudioFormatsFilterString()
+    {
+      StringBuilder sb = new StringBuilder();
+      foreach (string s in IVAE.MediaManipulation.MediaTypeHelper.AudioExtensions)
+        sb.Append($"*{s};");
+
+      return sb.ToString();
+    }
+
+    private string GetImageFormatsFilterString()
+    {
+      StringBuilder sb = new StringBuilder();
+      foreach (string s in IVAE.MediaManipulation.MediaTypeHelper.ImageExtensions)
+        sb.Append($"*{s};");
+
+      return sb.ToString();
+    }
+
+    private string GetVideoFormatsFilterString()
+    {
+      StringBuilder sb = new StringBuilder();
+      foreach (string s in IVAE.MediaManipulation.MediaTypeHelper.VideoExtensions)
+        sb.Append($"*{s};");
+
+      return sb.ToString();
     }
   }
 }

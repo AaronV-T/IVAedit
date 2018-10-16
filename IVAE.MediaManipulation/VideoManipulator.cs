@@ -13,6 +13,73 @@ namespace IVAE.MediaManipulation
     private double currentVideoDurationInMS = -1;
     private int totalSteps = -1, currentStep = -1;
 
+    public void CropVideo(string outputPath, string videoPath, int x, int y, int width, int height)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+      if (x < 0)
+        throw new ArgumentOutOfRangeException(nameof(x));
+      if (y < 0)
+        throw new ArgumentOutOfRangeException(nameof(y));
+      if (width <= 0)
+        throw new ArgumentOutOfRangeException(nameof(width));
+      if (height <= 0)
+        throw new ArgumentOutOfRangeException(nameof(height));
+      if ((x == 0 || y == 0) && x != y)
+        throw new ArgumentException("x and y must both be zero or both be positive.");
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      string xArg = string.Empty;
+      if (x > 0)
+        xArg = $":{x}";
+
+      string yArg = string.Empty;
+      if (y > 0)
+        yArg = $":{y}";
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf \"crop={width}:{height}{xArg}{yArg}\" -codec:a copy \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
+    public string ExtractAudioFromVideo(string outputPathWithoutExtension, string videoPath)
+    {
+      if (string.IsNullOrEmpty(outputPathWithoutExtension))
+        throw new ArgumentNullException(nameof(outputPathWithoutExtension));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+
+      string audioCodec = new FFProbeProcessRunner().Run($"-v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {videoPath}");
+      string outputPath = outputPathWithoutExtension + MediaTypeHelper.GetFileExtensionForAudioCodec(audioCodec);
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vn -codec:a copy \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+
+      return outputPath;
+    }
+
     public void MakeGifvFromGif(string outputPath, string gifPath)
     {
       if (string.IsNullOrEmpty(outputPath))
@@ -59,12 +126,12 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
-    public void TrimVideo(string outputPath, string videoPath, string startTime, string endTime)
+    public void Trim(string outputPath, string filePath, string startTime, string endTime)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
-      if (string.IsNullOrEmpty(videoPath))
-        throw new ArgumentNullException(nameof(videoPath));
+      if (string.IsNullOrEmpty(filePath))
+        throw new ArgumentNullException(nameof(filePath));
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
@@ -78,7 +145,7 @@ namespace IVAE.MediaManipulation
         endArg = $"-to {endTime} ";
 
       FFmpegProcessRunner fpr = new FFmpegProcessRunner();
-      fpr.Run($"-i \"{videoPath}\" {startArg}{endArg}-c copy \"{outputPath}\"");
+      fpr.Run($"-i \"{filePath}\" {startArg}{endArg}-codec copy \"{outputPath}\"");
     }
 
     public void Test(string path)

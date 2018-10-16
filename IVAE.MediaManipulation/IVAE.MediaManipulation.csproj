@@ -78,7 +78,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FFprobeProcessRunner.cs" />
     <Compile Include="FFmpegProcessRunner.cs" />
+    <Compile Include="MediaTypeHelper.cs" />
     <Compile Include="ImageFeatureDetector.cs" />
     <Compile Include="ImageManipulator.cs" />
     <Compile Include="MathHelper.cs" />
@@ -93,6 +95,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="ffmpeg.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ffprobe.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

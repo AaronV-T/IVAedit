@@ -31,12 +31,14 @@
     <CheckBox x:Name="checkboxAlignImages" Content="Align Images" HorizontalAlignment="Center" Margin="60,90,0,0" VerticalAlignment="Top" Width="110"/>
     <Label Content="Start Time" HorizontalAlignment="Center" Margin="260,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
     <Label Content="End Time" HorizontalAlignment="Center" Margin="420,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
+    <Label Content="Volume" HorizontalAlignment="Center" Margin="580,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
 
     <TextBox x:Name="tbxFontSize" HorizontalAlignment="Center" Height="25" Margin="-300,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
     <TextBox x:Name="tbxGifsPerLine" HorizontalAlignment="Center" Height="25" Margin="-140,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
     <ComboBox x:Name="cbImageAlignmentType" HorizontalAlignment="Center" Margin="60,105,0,0" VerticalAlignment="Top" Width="110"/>
     <TextBox x:Name="tbxStartTime" HorizontalAlignment="Center" Height="25" Margin="260,105,0,0" TextWrapping="Wrap" Text="00:00:00" VerticalAlignment="Top" Width="60"/>
     <TextBox x:Name="tbxEndTime" HorizontalAlignment="Center" Height="25" Margin="420,105,0,0" TextWrapping="Wrap" Text="00:00:00" VerticalAlignment="Top" Width="60"/>
+    <TextBox x:Name="tbxVolume" HorizontalAlignment="Center" Height="25" Margin="580,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
 
     <TextBlock x:Name="tblckMessage" Text="" HorizontalAlignment="Center" Margin="0,130,0,0" VerticalAlignment="Top" Width="650" Height="25" TextWrapping="Wrap" TextAlignment="Center"/>
 
@@ -46,9 +48,13 @@
     <Button x:Name="btnAlignImage" Content="Align Image" HorizontalAlignment="Center" Margin="205,160,0,0" VerticalAlignment="Top" Width="100" Click="btnAlignImage_Click"/>
     <Button x:Name="btnStitchImages" Content="StitchImages" HorizontalAlignment="Center" Margin="410,160,0,0" VerticalAlignment="Top" Width="100" Click="btnStitchImages_Click"/>
 
-    <Button x:Name="btnGifToGifv" Content="Gif to Gifv" HorizontalAlignment="Center" Margin="-310,185,0,0" VerticalAlignment="Top" Width="100" Click="btnGifToGifv_Click"/>
-    <Button x:Name="btnStabilizeVideo" Content="Stabilize Video" HorizontalAlignment="Center" Margin="-105,185,0,0" VerticalAlignment="Top" Width="100" Click="btnStabilizeVideo_Click"/>
-    <Button x:Name="btnTrimVideo" Content="Trim Video" HorizontalAlignment="Center" Margin="105,185,0,0" VerticalAlignment="Top" Width="100" Click="btnTrimVideo_Click"/>
-    <Button x:Name="btnNormalizeVolume" Content="Normalize Volume" HorizontalAlignment="Center" Margin="310,185,0,0" VerticalAlignment="Top" Width="100" Click="btnNormalizeVolume_Click"/>
+    <Button x:Name="btnCrop" Content="Crop" HorizontalAlignment="Center" Margin="-410,185,0,0" VerticalAlignment="Top" Width="100" Click="btnCrop_Click"/>
+    <Button x:Name="btnExtractAudio" Content="Extract Audio" HorizontalAlignment="Center" Margin="-205,185,0,0" VerticalAlignment="Top" Width="100" Click="btnExtractAudio_Click"/>
+    <Button x:Name="btnGifToGifv" Content="Gif to Gifv" HorizontalAlignment="Center" Margin="205,185,0,0" VerticalAlignment="Top" Width="100" Click="btnGifToGifv_Click"/>
+    <Button x:Name="btnStabilizeVideo" Content="Stabilize Video" HorizontalAlignment="Center" Margin="410,185,0,0" VerticalAlignment="Top" Width="100" Click="btnStabilizeVideo_Click"/>
+
+    <Button x:Name="btnAdjustVolume" Content="Adjust Volume" HorizontalAlignment="Center" Margin="-205,210,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustVolume_Click"/>
+    <Button x:Name="btnNormalizeVolume" Content="Normalize Volume" HorizontalAlignment="Center" Margin="0,210,0,0" VerticalAlignment="Top" Width="100" Click="btnNormalizeVolume_Click"/>
+    <Button x:Name="btnTrim" Content="Trim" HorizontalAlignment="Center" Margin="205,210,0,0" VerticalAlignment="Top" Width="100" Click="btnTrim_Click"/>
   </Grid>
 </Window>
