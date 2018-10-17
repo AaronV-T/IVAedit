@@ -174,6 +174,42 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
+    public string ConvertVideoToImages(string videoFilePath, string fps)
+    {
+      OnChangeStep?.Invoke("Converting Video to Images");
+
+      string outputDirectory = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Images{DateTime.Now.ToString("yyyyMMdd_HHmmss")}";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.MakeImagesFromVideo(outputDirectory, videoFilePath, fps);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputDirectory;
+    }
+
+    public string DrawMatches(string image1Path, string image2Path, ImageAlignmentType imageAlignmentType)
+    {
+      ImageManipulator imageManipulator = new ImageManipulator();
+      imageManipulator.OnProgress += ProgressUpdate;
+
+      MatchingTechnique mt;
+      if (imageAlignmentType != ImageAlignmentType.FULLWARP)
+        mt = MatchingTechnique.FAST;
+      else
+        mt = MatchingTechnique.ORB;
+
+      using (System.Drawing.Bitmap image1 = new System.Drawing.Bitmap(image1Path))
+      using (System.Drawing.Bitmap image2 = new System.Drawing.Bitmap(image2Path))
+      using (System.Drawing.Bitmap matchesImage = imageManipulator.GetImageWithDrawnMatches(image1, image2, mt))
+      {
+        string outputPath = $@"{System.IO.Path.GetDirectoryName(image1Path)}\Matches{DateTime.Now.ToString("yyyMMdd_HHmmss")}.jpg";
+        matchesImage.Save(outputPath);
+        imageManipulator.OnProgress -= ProgressUpdate;
+        return outputPath;
+      }
+    }
+
     public string ExtractAudioFromVideo(string videoFilePath)
     {
       OnChangeStep?.Invoke("Extracting Audio");
@@ -249,10 +285,54 @@ namespace IVAE.MediaManipulation
 
     public object Test(string[] fileNames)
     {
-      foreach (string file in fileNames)
-        new VideoManipulator().Test(file);
+      OnChangeStep?.Invoke("Making GIF");
 
-      return null;
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Giffed{DateTime.Now.ToString("yyyyMMdd_HHmmss")}.gif";
+
+      List<System.Drawing.Bitmap> bitmaps = new List<System.Drawing.Bitmap>();
+      try
+      {
+        ImageManipulator imageManipulator = new ImageManipulator();
+
+        for (int i = 0; i < fileNames.Length; i++)
+        {
+          if (i == 0)
+          {
+            bitmaps.Add(new System.Drawing.Bitmap(fileNames[i]));
+            continue;
+          }
+
+          using (System.Drawing.Bitmap currentBmp = new System.Drawing.Bitmap(fileNames[i]))
+          {
+            Console.Write($"{i}: ");
+            bitmaps.Add(imageManipulator.GetCombinedImage(bitmaps[i - 1], currentBmp));
+          }
+
+          //bitmaps[i].Save($@"{System.IO.Path.GetDirectoryName(fileNames[0])}\bmp{i}.png");
+        }
+
+        for (int i = fileNames.Length - 2; i >= 0; i--)
+        {
+          System.Drawing.Bitmap mappedBmp = imageManipulator.GetAlignedImage(bitmaps[i], bitmaps[i + 1], ImageAlignmentType.MAP);
+          bitmaps[i].Dispose();
+          bitmaps[i] = mappedBmp;
+        }
+
+        imageManipulator.OnProgress += ProgressUpdate;
+        imageManipulator.MakeGifFromImages(outputPath, bitmaps, 5, 100, 0);
+        imageManipulator.OnProgress -= ProgressUpdate;
+      }
+      catch (Exception)
+      {
+        throw;
+      }
+      finally
+      {
+        foreach (var bmp in bitmaps)
+          bmp?.Dispose();
+      }
+
+      return outputPath;
     }
 
     public string TrimAudioOrVideo(string filePath, string startTime, string endTime)

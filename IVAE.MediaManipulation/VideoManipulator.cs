@@ -104,6 +104,32 @@ namespace IVAE.MediaManipulation
       System.IO.File.Move(outputPathMP4, outputPath);
     }
 
+    public void MakeImagesFromVideo(string outputDirectory, string videoPath, string fps)
+    {
+      if (string.IsNullOrEmpty(outputDirectory))
+        throw new ArgumentNullException(nameof(outputDirectory));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+      if (string.IsNullOrEmpty(fps))
+        throw new ArgumentNullException(nameof(fps));
+
+      if (System.IO.Directory.Exists(outputDirectory))
+        System.IO.Directory.Delete(outputDirectory, true);
+
+      System.IO.Directory.CreateDirectory(outputDirectory);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf fps={fps} \"{outputDirectory}\\%d.png\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     public void StabilizeVideo(string outputPath, string videoPath)
     {
       if (string.IsNullOrEmpty(outputPath))

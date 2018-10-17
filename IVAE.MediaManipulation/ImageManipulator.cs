@@ -171,10 +171,20 @@ namespace IVAE.MediaManipulation
 
     public Bitmap GetAlignedImage(Bitmap imageToAlign, Bitmap referenceImage, ImageAlignmentType imageAlignmentType)
     {
-      if (imageAlignmentType == ImageAlignmentType.CROP)
+      if (imageAlignmentType == ImageAlignmentType.CROP || imageAlignmentType == ImageAlignmentType.MAP)
       {
         Tuple<int, int> offsets = ImageFeatureDetector.GetXYOffsets(imageToAlign, referenceImage);
-        return GetCroppedImage(imageToAlign, offsets.Item1, offsets.Item2, referenceImage.Width, referenceImage.Height);
+
+        if (imageAlignmentType == ImageAlignmentType.CROP)
+          return GetCroppedImage(imageToAlign, offsets.Item1, offsets.Item2, referenceImage.Width, referenceImage.Height);
+
+        Bitmap bmp = new Bitmap(referenceImage.Width, referenceImage.Height);
+        using (Graphics g = Graphics.FromImage(bmp))
+        {
+          g.DrawImage(imageToAlign, -offsets.Item1, -offsets.Item2);
+        }
+
+        return bmp;
       }
 
       using (Image<Bgr, byte> alignImg = new Image<Bgr, byte>(imageToAlign))
@@ -223,6 +233,46 @@ namespace IVAE.MediaManipulation
           }
         }
       }
+    }
+
+    public Bitmap GetCombinedImage(Bitmap originalImage, Bitmap updateImage)
+    {
+      Tuple<int,int> offsets = ImageFeatureDetector.GetXYOffsets(originalImage, updateImage);
+
+      int width, height, originalImageX, originalImageY, updateImageX, updateImageY;
+      if (offsets.Item1 >= 0) {
+        width = (originalImage.Width > offsets.Item1 + updateImage.Width) ? originalImage.Width : offsets.Item1 + updateImage.Width;
+        originalImageX = 0;
+        updateImageX = offsets.Item1;
+      }
+      else
+      {
+        width = -offsets.Item1 + ((originalImage.Width > offsets.Item1 + updateImage.Width) ? originalImage.Width : offsets.Item1 + updateImage.Width);
+        originalImageX = -offsets.Item1;
+        updateImageX = 0;
+      }
+
+      if (offsets.Item2 >= 0)
+      {
+        height = (originalImage.Height > offsets.Item2 + updateImage.Height) ? originalImage.Height : offsets.Item2 + updateImage.Height;
+        originalImageY = 0;
+        updateImageY = offsets.Item2;
+      }
+      else
+      {
+        height = -offsets.Item2 + ((originalImage.Height > offsets.Item2 + updateImage.Height) ? originalImage.Height : offsets.Item2 + updateImage.Height);
+        originalImageY = -offsets.Item2;
+        updateImageY = 0;
+      }
+
+      Bitmap bmp = new Bitmap(width, height);
+      using (Graphics g = Graphics.FromImage(bmp))
+      {
+        g.DrawImage(originalImage, originalImageX, originalImageY);
+        g.DrawImage(updateImage, updateImageX, updateImageY);
+      }
+
+      return bmp;
     }
 
     public Bitmap GetCroppedImage(Bitmap image, int x, int y, int width, int height)

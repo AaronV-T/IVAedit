@@ -16,7 +16,7 @@ namespace IVAE.MediaManipulation
 {
   public enum MatchingTechnique { FAST = 0, ORB = 1, SURF = 2 }
 
-  public enum ImageAlignmentType { CROP = 0, FASTWARP = 1, FULLWARP = 2 }
+  public enum ImageAlignmentType { CROP, FASTWARP, FULLWARP, MAP }
 
   public static class ImageFeatureDetector
   {
@@ -117,7 +117,7 @@ namespace IVAE.MediaManipulation
       using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
       {
         Mat mask;
-        FindMatches(modelImage, observedImage, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography, MatchingTechnique.FAST, 500);
+        FindMatches(modelImage, observedImage, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography, MatchingTechnique.FAST, 10000);
 
         var maskMatrix = new Matrix<byte>(mask.Rows, mask.Cols);
         mask.CopyTo(maskMatrix);
@@ -156,7 +156,7 @@ namespace IVAE.MediaManipulation
           }
         }
 
-        Console.WriteLine($"{(int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average())} {(int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average())}");
+        Console.WriteLine($"{lowestDistanceOffsets.Item2.Item1.Count} {(int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average())},{(int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average())}");
 
         return new Tuple<int, int>((int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average()), (int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average()));
       }

@@ -19,6 +19,7 @@ namespace IVAeditGUI
       this.mainWindow.OnAlignImageButtonClick += AlignImage;
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
       this.mainWindow.OnCropButtonClick += Crop;
+      this.mainWindow.OnDrawMatchesButtonClick += DrawMatches;
       this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
       this.mainWindow.OnExtractAudioButtonClick += ExtractAudio;
@@ -27,6 +28,7 @@ namespace IVAeditGUI
       this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
       this.mainWindow.OnTrimButtonClick += Trim;
+      this.mainWindow.OnVideoToImagesButtonClick += ConvertVideoToImages;
 
       try
       {
@@ -56,7 +58,7 @@ namespace IVAeditGUI
         if (settings.ContainsKey("GifsPerLine"))
           mainWindow.tbxGifsPerLine.Text = settings["GifsPerLine"];
         if (settings.ContainsKey("AlignImages"))
-          mainWindow.checkboxAlignImages.IsChecked= Convert.ToBoolean(settings["AlignImages"]);
+          mainWindow.checkboxAlignImages.IsChecked = Convert.ToBoolean(settings["AlignImages"]);
         if (settings.ContainsKey("ImageAlignmentType"))
           mainWindow.cbImageAlignmentType.SelectedValue = settings["ImageAlignmentType"];
         if (settings.ContainsKey("StartTime"))
@@ -65,6 +67,8 @@ namespace IVAeditGUI
           mainWindow.tbxEndTime.Text = settings["EndTime"];
         if (settings.ContainsKey("Volume"))
           mainWindow.tbxVolume.Text = settings["Volume"];
+        if (settings.ContainsKey("FPS"))
+          mainWindow.tbxFPS.Text = settings["FPS"];
       }
       catch (Exception ex)
       {
@@ -280,7 +284,7 @@ namespace IVAeditGUI
         IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
         taskHandler.OnChangeStep += ChangeCurrentStep;
         taskHandler.OnProgressUpdate += ProgressUpdate;
-        
+
         DateTime start = DateTime.Now;
         string gifPath = null;
         await Task.Factory.StartNew(() =>
@@ -334,6 +338,48 @@ namespace IVAeditGUI
       }
     }
 
+    public async void ConvertVideoToImages()
+    {
+      try
+      {
+        string fps = mainWindow.tbxFPS.Text;
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "FPS", fps.ToString() }
+        });
+
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select video file.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputDirectory = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputDirectory = taskHandler.ConvertVideoToImages(openFileDialog.FileName, fps);
+        });
+
+        mainWindow.SetMessage($"Images created '{outputDirectory}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputDirectory);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
     public async void Crop()
     {
       try
@@ -378,6 +424,61 @@ namespace IVAeditGUI
         });
 
         mainWindow.SetMessage($"Cropped file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void DrawMatches()
+    {
+      try
+      {
+        IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
+        if (!Enum.TryParse(mainWindow.cbImageAlignmentType.SelectedItem.ToString(), out imageAlignmentType))
+          throw new ArgumentException($"Image alignment type is not valid.");
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "ImageAlignmentType", imageAlignmentType.ToString() }
+        });
+
+        System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
+        openFileDialog1.Title = "Select image 1.";
+        openFileDialog1.Multiselect = false;
+
+        if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog2.Filter = $"Images|{GetImageFormatsFilterString()}";
+        openFileDialog2.Title = "Select image 2.";
+        openFileDialog2.Multiselect = false;
+
+        if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.DrawMatches(openFileDialog1.FileName, openFileDialog2.FileName, imageAlignmentType);
+        });
+
+        mainWindow.SetMessage($"Image with matches created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
         System.Diagnostics.Process.Start(outputPath);
       }
       catch (Exception ex)

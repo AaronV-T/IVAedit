@@ -25,6 +25,7 @@ namespace IVAeditGUI
       OnAlignImageButtonClick,
       OnCombineGifsButtonClick,
       OnCropButtonClick,
+      OnDrawMatchesButtonClick,
       OnExtractAudioButtonClick,
       OnImagesToGifButtonClick,
       OnGifToGifvButtonClick,
@@ -32,7 +33,8 @@ namespace IVAeditGUI
       OnStabilizeVideoButtonClick,
       OnStitchImagesButtonClick,
       OnTestButtonClick,
-      OnTrimButtonClick;
+      OnTrimButtonClick,
+      OnVideoToImagesButtonClick;
 
     public MainWindow()
     {
@@ -73,6 +75,11 @@ namespace IVAeditGUI
       OnCropButtonClick?.Invoke();
     }
 
+    private void btnDrawMatches_Click(object sender, RoutedEventArgs e)
+    {
+      OnDrawMatchesButtonClick?.Invoke();
+    }
+
     private void btnExtractAudio_Click(object sender, RoutedEventArgs e)
     {
       OnExtractAudioButtonClick?.Invoke();
@@ -111,6 +118,11 @@ namespace IVAeditGUI
     private void btnTrim_Click(object sender, RoutedEventArgs e)
     {
       OnTrimButtonClick?.Invoke();
+    }
+
+    private void btnVideoToImages_Click(object sender, RoutedEventArgs e)
+    {
+      OnVideoToImagesButtonClick?.Invoke();
     }
   }
 }
