@@ -15,7 +15,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Adjusting Volume");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_AdjustedVolume{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_AdjustedVolume{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
 
       AudioManipulator audioManipulator = new AudioManipulator();
       audioManipulator.OnProgress += ProgressUpdate;
@@ -34,7 +34,7 @@ namespace IVAE.MediaManipulation
       using (System.Drawing.Bitmap referenceImage = new System.Drawing.Bitmap(referenceImagePath))
       using (System.Drawing.Bitmap warpedImage = imageManipulator.GetAlignedImage(imageToAlign, referenceImage, imageAlignmentType))
       {
-        string outputPath = $@"{System.IO.Path.GetDirectoryName(imageToAlignPath)}\{System.IO.Path.GetFileNameWithoutExtension(imageToAlignPath)}_Aligned{DateTime.Now.ToString("yyyMMdd_HHmmss")}{System.IO.Path.GetExtension(imageToAlignPath)}";
+        string outputPath = $@"{System.IO.Path.GetDirectoryName(imageToAlignPath)}\{System.IO.Path.GetFileNameWithoutExtension(imageToAlignPath)}_Aligned{GetCurrentTimeShort()}{System.IO.Path.GetExtension(imageToAlignPath)}";
         warpedImage.Save(outputPath);
 
         imageManipulator.OnProgress -= ProgressUpdate;
@@ -46,7 +46,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Combining GIFs.");
 
-      string newGifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Combined{DateTime.Now.ToString("yyyMMdd_HHmmss")}.gif";
+      string newGifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Combined{GetCurrentTimeShort()}.gif";
 
       ImageManipulator imageManipulator = new ImageManipulator();
       imageManipulator.OnProgress += ProgressUpdate;
@@ -66,7 +66,7 @@ namespace IVAE.MediaManipulation
 
         if (alignImages || writeFileNames || width != 0 || height != 0)
         {
-          OnChangeStep?.Invoke("Editing Images");
+          OnChangeStep?.Invoke("Editing Images Step 1");
 
           for (int i = 0; i < fileNames.Length; i++)
           {
@@ -88,14 +88,46 @@ namespace IVAE.MediaManipulation
               }
             }
 
-            // If image aligning enabled: ...
-            if (alignImages && i > 0)
+            if (alignImages && imageAlignmentType == ImageAlignmentType.MAP && i > 0)
             {
               DateTime start = DateTime.Now;
-              System.Drawing.Bitmap alignedImage = imageManipulator.GetAlignedImage(sourceImages[i], sourceImages[i - 1], imageAlignmentType);
-              Console.WriteLine($"GetAlignedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
+              System.Drawing.Bitmap combinedImage = imageManipulator.GetCombinedImage(sourceImages[i - 1], sourceImages[i]);
+              Console.WriteLine($"GetCombinedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
               sourceImages[i].Dispose();
-              sourceImages[i] = alignedImage;
+              sourceImages[i] = combinedImage;
+            }
+          }
+
+          // Loop defaults to forward but can go backward if using map image alignment.
+          int index = 0;
+          Func<bool> loopCondition = () => index < sourceImages.Count;
+          Action loopAction = () => index++;
+          if (alignImages && imageAlignmentType == ImageAlignmentType.MAP)
+          {
+            index = sourceImages.Count - 1;
+            loopCondition = () => index >= 0;
+            loopAction = () => index--;
+          }
+
+          OnChangeStep?.Invoke("Editing Images Step 2");
+          for (; loopCondition(); loopAction())
+          {
+            ProgressUpdate(index / (float)fileNames.Length);
+
+            // If image aligning enabled: ...
+            if (alignImages && ((imageAlignmentType != ImageAlignmentType.MAP && index > 0) || (imageAlignmentType == ImageAlignmentType.MAP && index < sourceImages.Count - 1)))
+            {
+              int referenceIndex;
+              if (imageAlignmentType != ImageAlignmentType.MAP)
+                referenceIndex = index - 1;
+              else
+                referenceIndex = index + 1;
+
+              DateTime start = DateTime.Now;
+              System.Drawing.Bitmap alignedImage = imageManipulator.GetAlignedImage(sourceImages[index], sourceImages[referenceIndex], imageAlignmentType);
+              Console.WriteLine($"GetAlignedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
+              sourceImages[index].Dispose();
+              sourceImages[index] = alignedImage;
             }
 
             // If writing text enabled: write the file name onto the image.
@@ -103,19 +135,22 @@ namespace IVAE.MediaManipulation
             {
               // Create an image with the drawn text.
               DateTime start = DateTime.Now;
-              System.Drawing.Bitmap editedImage = imageManipulator.GetImageWithDrawnText(sourceImages[i], System.IO.Path.GetFileNameWithoutExtension(fileNames[i]), fontSize);
+              string fileName = System.IO.Path.GetFileNameWithoutExtension(fileNames[index]).Trim();
+              if (fileName.IndexOf("!end!") > 0)
+                fileName = fileName.Substring(0, fileName.IndexOf("!end!"));
+              System.Drawing.Bitmap editedImage = imageManipulator.GetImageWithDrawnText(sourceImages[index], fileName, fontSize);
               Console.WriteLine($"GetImageWithDrawnText took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
 
               // Dispose the current raw image and store the image with drawn text.
-              sourceImages[i].Dispose();
-              sourceImages[i] = editedImage;
+              sourceImages[index].Dispose();
+              sourceImages[index] = editedImage;
             }
           }
         }
 
         // Add the images to a gif.
         OnChangeStep?.Invoke("Adding Images to GIF");
-        string gifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Converted{DateTime.Now.ToString("yyyMMdd_HHmmss")}.gif";
+        string gifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\ImagesToGif{GetCurrentTimeShort()}.gif";
         imageManipulator.OnProgress += ProgressUpdate;
         imageManipulator.MakeGifFromImages(gifPath, sourceImages, frameDelay, finalDelay, loops);
         imageManipulator.OnProgress -= ProgressUpdate;
@@ -151,7 +186,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Cropping");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Cropped{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Cropped{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{GetCurrentTimeShort()}";
 
       MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
       if (mediaType == MediaType.IMAGE)
@@ -178,7 +213,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Converting Video to Images");
 
-      string outputDirectory = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Images{DateTime.Now.ToString("yyyyMMdd_HHmmss")}";
+      string outputDirectory = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Images{GetCurrentTimeShort()}";
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
@@ -203,7 +238,7 @@ namespace IVAE.MediaManipulation
       using (System.Drawing.Bitmap image2 = new System.Drawing.Bitmap(image2Path))
       using (System.Drawing.Bitmap matchesImage = imageManipulator.GetImageWithDrawnMatches(image1, image2, mt))
       {
-        string outputPath = $@"{System.IO.Path.GetDirectoryName(image1Path)}\Matches{DateTime.Now.ToString("yyyMMdd_HHmmss")}.jpg";
+        string outputPath = $@"{System.IO.Path.GetDirectoryName(image1Path)}\Matches{GetCurrentTimeShort()}.jpg";
         matchesImage.Save(outputPath);
         imageManipulator.OnProgress -= ProgressUpdate;
         return outputPath;
@@ -214,7 +249,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Extracting Audio");
 
-      string outputPathWithoutExtension = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Extracted{DateTime.Now.ToString("yyyyMMdd_HHmmss")}";
+      string outputPathWithoutExtension = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Extracted{GetCurrentTimeShort()}";
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
@@ -228,7 +263,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Normalizing Audio");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Normalized{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Normalized{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
 
       AudioManipulator audioManipulator = new AudioManipulator();
       audioManipulator.OnProgress += ProgressUpdate;
@@ -242,7 +277,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Stabilizing Video");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Stabilized{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(videoFilePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Stabilized{GetCurrentTimeShort()}{System.IO.Path.GetExtension(videoFilePath)}";
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
@@ -265,7 +300,7 @@ namespace IVAE.MediaManipulation
 
         using (System.Drawing.Bitmap stitchedImage = imageManipulator.GetStitchedImage(bitmaps))
         {
-          string outputPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Stitched{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(fileNames[0])}";
+          string outputPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Stitched{GetCurrentTimeShort()}{System.IO.Path.GetExtension(fileNames[0])}";
           stitchedImage.Save(outputPath);
 
           imageManipulator.OnProgress -= ProgressUpdate;
@@ -285,61 +320,65 @@ namespace IVAE.MediaManipulation
 
     public object Test(string[] fileNames)
     {
-      OnChangeStep?.Invoke("Making GIF");
+      OnChangeStep?.Invoke("Test");
+      string videoFilePath = fileNames[0];
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\Giffed{DateTime.Now.ToString("yyyyMMdd_HHmmss")}.gif";
+      // Convert video to images.
+      string imageDirectory = ConvertVideoToImages(videoFilePath, (1/.35).ToString());
+      List<string> imagePaths = System.IO.Directory.GetFiles(imageDirectory).ToList();
+      imagePaths.Sort(new NaturalStringComparer());
 
-      List<System.Drawing.Bitmap> bitmaps = new List<System.Drawing.Bitmap>();
-      try
+      OnChangeStep?.Invoke("Getting turn numbers.");
+
+      // Rename images.
+      string lastTurn = null;
+      int lastTurnCount = 0;
+      for (int i = 0; i < imagePaths.Count; i++)
       {
-        ImageManipulator imageManipulator = new ImageManipulator();
+        OnProgressUpdate?.Invoke(i / (float)imagePaths.Count);
 
-        for (int i = 0; i < fileNames.Length; i++)
+        string turn;
+        using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(imagePaths[i]))
+        using (System.Drawing.Bitmap cbmp = new ImageManipulator().GetCroppedImage(bmp, 1123, 688, 30, 14))
+        using (ImageMagick.MagickImage magickImage = new ImageMagick.MagickImage(cbmp))
         {
-          if (i == 0)
+          magickImage.Grayscale();
+          magickImage.Resize(new ImageMagick.MagickGeometry(magickImage.Width * 10, magickImage.Height * 10));
+          using (System.Drawing.Bitmap grayBmp = magickImage.ToBitmap())
           {
-            bitmaps.Add(new System.Drawing.Bitmap(fileNames[i]));
-            continue;
+            string temppath = $@"{System.IO.Path.GetDirectoryName(imagePaths[i])}\{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])}_temp{System.IO.Path.GetExtension(imagePaths[i])}";
+            grayBmp.Save(temppath);
+            grayBmp.Save(@"D:\Downloads\Test.png");
+            string txt = ImageFeatureDetector.GetTextFromImage(temppath);
+            turn = txt.Split()[0];
+            Console.WriteLine($"{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])} -> {txt}");
+            System.IO.File.Delete(temppath);
           }
-
-          using (System.Drawing.Bitmap currentBmp = new System.Drawing.Bitmap(fileNames[i]))
-          {
-            Console.Write($"{i}: ");
-            bitmaps.Add(imageManipulator.GetCombinedImage(bitmaps[i - 1], currentBmp));
-          }
-
-          //bitmaps[i].Save($@"{System.IO.Path.GetDirectoryName(fileNames[0])}\bmp{i}.png");
         }
 
-        for (int i = fileNames.Length - 2; i >= 0; i--)
-        {
-          System.Drawing.Bitmap mappedBmp = imageManipulator.GetAlignedImage(bitmaps[i], bitmaps[i + 1], ImageAlignmentType.MAP);
-          bitmaps[i].Dispose();
-          bitmaps[i] = mappedBmp;
-        }
+        if (turn != lastTurn)
+          lastTurnCount = 0;
+        else
+          lastTurnCount++;
 
-        imageManipulator.OnProgress += ProgressUpdate;
-        imageManipulator.MakeGifFromImages(outputPath, bitmaps, 5, 100, 0);
-        imageManipulator.OnProgress -= ProgressUpdate;
-      }
-      catch (Exception)
-      {
-        throw;
-      }
-      finally
-      {
-        foreach (var bmp in bitmaps)
-          bmp?.Dispose();
+        string newImagePath = $@"{System.IO.Path.GetDirectoryName(imagePaths[i])}\{turn}!end!{lastTurnCount}{System.IO.Path.GetExtension(imagePaths[i])}";
+        
+        System.IO.File.Move(imagePaths[i], newImagePath);
+        imagePaths[i] = newImagePath;
+
+        lastTurn = turn;
       }
 
-      return outputPath;
+      ConvertImagesToGif(imagePaths.ToArray(), 400, 222, 650, 444, 3, 200, 0, 32, true, true, ImageAlignmentType.MAP);
+
+      return null;
     }
 
     public string TrimAudioOrVideo(string filePath, string startTime, string endTime)
     {
       OnChangeStep?.Invoke("Trimming File");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Trimmed{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{System.IO.Path.GetExtension(filePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Trimmed{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
@@ -347,6 +386,15 @@ namespace IVAE.MediaManipulation
       videoManipulator.OnProgress -= ProgressUpdate;
 
       return outputPath;
+    }
+
+    private string GetCurrentTimeShort()
+    {
+      byte[] bytes = BitConverter.GetBytes(long.Parse(DateTime.Now.ToString("yyMMddHHmmss")));
+      Array.Reverse(bytes);
+
+      char[] array = Convert.ToBase64String(bytes).Trim('A', '=').Replace('/', ')').ToCharArray();
+      return new string(array);
     }
 
     private void ProgressUpdate(float percent)

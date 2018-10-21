@@ -11,6 +11,7 @@ using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Emgu.CV.Cuda;
 using Emgu.CV.XFeatures2D;
+using Tesseract;
 
 namespace IVAE.MediaManipulation
 {
@@ -20,6 +21,27 @@ namespace IVAE.MediaManipulation
 
   public static class ImageFeatureDetector
   {
+    public static string GetTextFromImage(string imagePath)
+    {
+      /*using (Tesseract.TesseractEngine tesseractEngine = new Tesseract.TesseractEngine(@"./tessdata", "eng", Tesseract.EngineMode.Default))
+      using (Pix pix = PixConverter.ToPix(image))
+      using (Tesseract.Page page = tesseractEngine.Process(pix))
+      {
+        return page.GetText();
+      }*/
+
+      TessBaseAPI tessBaseAPI = new TessBaseAPI();
+
+      tessBaseAPI.Init("./tessdata/", "eng", OcrEngineMode.TESSERACT_ONLY);
+
+      tessBaseAPI.SetVariable("tessedit_char_whitelist", "1234567890");
+
+      using (tessBaseAPI.SetImage(imagePath))
+      {
+        return tessBaseAPI.GetUTF8Text();
+      }
+    }
+
     public static void FindMatches(Mat modelImage, Mat observedImage, out VectorOfKeyPoint modelKeyPoints, out VectorOfKeyPoint observedKeyPoints, VectorOfVectorOfDMatch matches, out Mat mask, out Mat homography, MatchingTechnique matchingTechnique, float keyPointFilter = 1, double detectorParameter = -1)
     {
       int k = 2;

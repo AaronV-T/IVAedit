@@ -180,7 +180,9 @@ namespace IVAE.MediaManipulation
 
         Bitmap bmp = new Bitmap(referenceImage.Width, referenceImage.Height);
         using (Graphics g = Graphics.FromImage(bmp))
+        using (Brush brush = new SolidBrush(Color.Black))
         {
+          g.FillRectangle(brush, 0, 0, bmp.Width, bmp.Height);
           g.DrawImage(imageToAlign, -offsets.Item1, -offsets.Item2);
         }
 

@@ -113,6 +113,9 @@ namespace IVAE.MediaManipulation
       if (string.IsNullOrEmpty(fps))
         throw new ArgumentNullException(nameof(fps));
 
+      if (outputDirectory[outputDirectory.Length - 1] != '\\')
+        outputDirectory += "\\";
+
       if (System.IO.Directory.Exists(outputDirectory))
         System.IO.Directory.Delete(outputDirectory, true);
 
@@ -124,7 +127,7 @@ namespace IVAE.MediaManipulation
       totalSteps = 1;
 
       currentStep = 1;
-      fpr.Run($"-i \"{videoPath}\" -vf fps={fps} \"{outputDirectory}\\%d.png\"");
+      fpr.Run($"-i \"{videoPath}\" -vf fps={fps} \"{outputDirectory}%d.png\"");
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;
