@@ -59,7 +59,6 @@ namespace IVAE.MediaManipulation
     public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, int frameDelay, int finalDelay, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType imageAlignmentType)
     {
       List<System.Drawing.Bitmap> sourceImages = new List<System.Drawing.Bitmap>();
-      //System.Drawing.Bitmap tempImage = null;
       try
       {
         ImageManipulator imageManipulator = new ImageManipulator();
@@ -96,6 +95,8 @@ namespace IVAE.MediaManipulation
               sourceImages[i].Dispose();
               sourceImages[i] = combinedImage;
             }
+
+            //sourceImages[i].Save($@"{System.IO.Path.GetDirectoryName(fileNames[i])}\edited{System.IO.Path.GetFileNameWithoutExtension(fileNames[i])}{System.IO.Path.GetExtension(fileNames[i])}");
           }
 
           // Loop defaults to forward but can go backward if using map image alignment.
@@ -113,7 +114,7 @@ namespace IVAE.MediaManipulation
           for (; loopCondition(); loopAction())
           {
             ProgressUpdate(index / (float)fileNames.Length);
-
+            Console.WriteLine(index);
             // If image aligning enabled: ...
             if (alignImages && ((imageAlignmentType != ImageAlignmentType.MAP && index > 0) || (imageAlignmentType == ImageAlignmentType.MAP && index < sourceImages.Count - 1)))
             {
@@ -186,7 +187,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Cropping");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Cropped{DateTime.Now.ToString("yyyyMMdd_HHmmss")}{GetCurrentTimeShort()}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Cropped{GetCurrentTimeShort()}{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
 
       MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
       if (mediaType == MediaType.IMAGE)
@@ -238,6 +239,8 @@ namespace IVAE.MediaManipulation
       using (System.Drawing.Bitmap image2 = new System.Drawing.Bitmap(image2Path))
       using (System.Drawing.Bitmap matchesImage = imageManipulator.GetImageWithDrawnMatches(image1, image2, mt))
       {
+        ImageFeatureDetector.GetXYOffsets(image1, image2);
+
         string outputPath = $@"{System.IO.Path.GetDirectoryName(image1Path)}\Matches{GetCurrentTimeShort()}.jpg";
         matchesImage.Save(outputPath);
         imageManipulator.OnProgress -= ProgressUpdate;
@@ -348,10 +351,9 @@ namespace IVAE.MediaManipulation
           {
             string temppath = $@"{System.IO.Path.GetDirectoryName(imagePaths[i])}\{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])}_temp{System.IO.Path.GetExtension(imagePaths[i])}";
             grayBmp.Save(temppath);
-            grayBmp.Save(@"D:\Downloads\Test.png");
-            string txt = ImageFeatureDetector.GetTextFromImage(temppath);
+            string txt = ImageFeatureDetector.GetNumberFromImage(temppath);
             turn = txt.Split()[0];
-            Console.WriteLine($"{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])} -> {txt}");
+            //Console.WriteLine($"{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])} -> {txt}");
             System.IO.File.Delete(temppath);
           }
         }

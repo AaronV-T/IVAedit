@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IVAE.MediaManipulation", "I
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IVAeditGUI", "IVAeditGUI\IVAeditGUI.csproj", "{D70C2860-71CC-4572-8029-CA98557839C0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IVAE.UnitTests", "IVAE.UnitTests\IVAE.UnitTests.csproj", "{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{D70C2860-71CC-4572-8029-CA98557839C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D70C2860-71CC-4572-8029-CA98557839C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D70C2860-71CC-4572-8029-CA98557839C0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

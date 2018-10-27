@@ -21,7 +21,7 @@ namespace IVAE.MediaManipulation
 
   public static class ImageFeatureDetector
   {
-    public static string GetTextFromImage(string imagePath)
+    public static string GetNumberFromImage(string imagePath)
     {
       /*using (Tesseract.TesseractEngine tesseractEngine = new Tesseract.TesseractEngine(@"./tessdata", "eng", Tesseract.EngineMode.Default))
       using (Pix pix = PixConverter.ToPix(image))
@@ -38,7 +38,7 @@ namespace IVAE.MediaManipulation
 
       using (tessBaseAPI.SetImage(imagePath))
       {
-        return tessBaseAPI.GetUTF8Text();
+        return tessBaseAPI.GetUTF8Text().Trim();
       }
     }
 
@@ -60,7 +60,7 @@ namespace IVAE.MediaManipulation
         if (matchingTechnique == MatchingTechnique.FAST)
         {
           if (detectorParameter <= 0)
-            detectorParameter = 20;
+            detectorParameter = 75;
 
           detector = new FastDetector((int)detectorParameter);
           descriptor = new BriefDescriptorExtractor();
@@ -178,7 +178,7 @@ namespace IVAE.MediaManipulation
           }
         }
 
-        Console.WriteLine($"{lowestDistanceOffsets.Item2.Item1.Count} {(int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average())},{(int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average())}");
+        Console.WriteLine($"Dist: {lowestDistanceOffsets.Item1}. Occur: {lowestDistanceOffsets.Item2.Item1.Count}. Offset: {(int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average())},{(int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average())}.");
 
         return new Tuple<int, int>((int)Math.Round(lowestDistanceOffsets.Item2.Item1.Average()), (int)Math.Round(lowestDistanceOffsets.Item2.Item2.Average()));
       }

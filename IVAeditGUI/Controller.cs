@@ -653,12 +653,13 @@ namespace IVAeditGUI
           return;
         }
 
+        DateTime start = DateTime.Now;
         await Task.Factory.StartNew(() =>
         {
           taskHandler.Test(openFileDialog.FileNames);
         });
 
-        mainWindow.SetMessage($"Finished.");
+        mainWindow.SetMessage($"Finished in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       }
       catch (Exception ex)
       {
