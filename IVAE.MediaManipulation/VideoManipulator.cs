@@ -13,6 +13,42 @@ namespace IVAE.MediaManipulation
     private double currentVideoDurationInMS = -1;
     private int totalSteps = -1, currentStep = -1;
 
+    public void ChangeVideoSpeed(string outputPath, string videoFilepath, float newPlaybackRate, float newFramerate = 0, bool alsoChangeAudio = false)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoFilepath))
+        throw new ArgumentNullException(nameof(videoFilepath));
+      if (alsoChangeAudio && (newPlaybackRate < 0.5f || newPlaybackRate > 2.0f))
+        throw new ArgumentOutOfRangeException(nameof(newPlaybackRate));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      float setptsVal = 1 / newPlaybackRate;
+
+      string frameRateArg = string.Empty;
+      if (newFramerate > 0)
+        frameRateArg = $"-r {newFramerate} ";
+
+      string args;
+      if (alsoChangeAudio)
+        args = $"-i \"{videoFilepath}\" -filter_complex \"[0:v]setpts={setptsVal}*PTS[v];[0:a]atempo={newPlaybackRate}[a]\" -map \"[v]\" -map \"[a]\" \"{outputPath}\"";
+      else
+        args = $"-i \"{videoFilepath}\" {frameRateArg}-filter:v \"setpts={setptsVal}*PTS\" -an \"{outputPath}\"";
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run(args);
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     public void CropVideo(string outputPath, string videoPath, int x, int y, int width, int height)
     {
       if (string.IsNullOrEmpty(outputPath))
@@ -80,28 +116,21 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
-    public void MakeGifvFromGif(string outputPath, string gifPath)
+    public void MakeVideoFromGif(string outputPath, string gifPath)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
       if (string.IsNullOrEmpty(gifPath))
         throw new ArgumentNullException(nameof(gifPath));
 
-      string outputPathMP4 = $@"{System.IO.Path.GetDirectoryName(outputPath)}\{System.IO.Path.GetFileNameWithoutExtension(outputPath)}.mp4";
-
-      if (System.IO.File.Exists(outputPathMP4))
-        System.IO.File.Delete(outputPathMP4);
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
 
       // movflags – This option optimizes the structure of the MP4 file so the browser can load it as quickly as possible.
       // pix_fmt – MP4 videos store pixels in different formats. We include this option to specify a specific format which has maximum compatibility across all browsers.
       // vf – MP4 videos using H.264 need to have a dimensions that are divisible by 2. This option ensures that’s the case.
       FFmpegProcessRunner fpr = new FFmpegProcessRunner();
-      fpr.Run($"-i \"{gifPath}\" -movflags faststart -pix_fmt yuv420p -vf \"scale = trunc(iw / 2) * 2:trunc(ih / 2) * 2\" \"{outputPathMP4}\"");
-
-      if (System.IO.File.Exists(outputPath))
-        System.IO.File.Delete(outputPath);
-
-      System.IO.File.Move(outputPathMP4, outputPath);
+      fpr.Run($"-i \"{gifPath}\" -movflags faststart -pix_fmt yuv420p -vf \"scale = trunc(iw / 2) * 2:trunc(ih / 2) * 2\" \"{outputPath}\"");
     }
 
     public void MakeImagesFromVideo(string outputDirectory, string videoPath, string fps)

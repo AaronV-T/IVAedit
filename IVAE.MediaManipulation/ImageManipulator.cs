@@ -332,8 +332,8 @@ namespace IVAE.MediaManipulation
         }
         finally
         {
-          mask.Dispose();
-          homography.Dispose();
+          mask?.Dispose();
+          homography?.Dispose();
         }
       }
     }
@@ -378,8 +378,26 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public void MakeGifFromImages(string outputPath, List<Bitmap> images, int animationDelay, int finalFrameAnimationDelay, int animationIterations)
+    public void MakeGifFromImages(string outputPath, List<Bitmap> images, int animationDelay, int finalFrameAnimationDelay = 0, int animationIterations = 0)
     {
+      List<int> animationDelays = new List<int>();
+
+      for (int i = 0; i < images.Count - 1; i++)
+        animationDelays.Add(animationDelay);
+
+      if (finalFrameAnimationDelay > 0)
+        animationDelays.Add(finalFrameAnimationDelay);
+      else
+        animationDelays.Add(animationDelay);
+
+      MakeGifFromImages(outputPath, images, animationDelays, animationIterations);
+    }
+
+    public void MakeGifFromImages(string outputPath, List<Bitmap> images, List<int> animationDelays, int animationIterations = 0)
+    {
+      if (images.Count != animationDelays.Count)
+        throw new ArgumentException($"{nameof(images)} count is not equal to {nameof(animationDelays)} count.");
+
       using (MagickImageCollection imageCollection = new MagickImageCollection())
       {
         QuantizeSettings quantizeSettings = new QuantizeSettings();
@@ -392,11 +410,9 @@ namespace IVAE.MediaManipulation
 
           imageCollection.Add(new MagickImage(images[i]));
 
-          int delay = animationDelay;
-          if (i == images.Count - 1)
-            delay = finalFrameAnimationDelay;
+          Console.Write($"{animationDelays[i]} ");
 
-          imageCollection[imageCollection.Count - 1].AnimationDelay = delay;
+          imageCollection[imageCollection.Count - 1].AnimationDelay = animationDelays[i];
           imageCollection[imageCollection.Count - 1].AnimationIterations = animationIterations;
           imageCollection[imageCollection.Count - 1].Format = MagickFormat.Gif;
           imageCollection[imageCollection.Count - 1].Quantize(quantizeSettings);

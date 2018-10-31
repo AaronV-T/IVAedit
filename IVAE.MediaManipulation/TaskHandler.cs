@@ -58,6 +58,21 @@ namespace IVAE.MediaManipulation
 
     public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, int frameDelay, int finalDelay, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType imageAlignmentType)
     {
+      List<int> animationDelays = new List<int>();
+
+      for (int i = 0; i < fileNames.Length - 1; i++)
+        animationDelays.Add(frameDelay);
+
+      if (finalDelay > 0)
+        animationDelays.Add(finalDelay);
+      else
+        animationDelays.Add(frameDelay);
+
+      return ConvertImagesToGif(fileNames, x, y, width, height, animationDelays, loops, fontSize, writeFileNames, alignImages, imageAlignmentType);
+    }
+
+    public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, List<int> animationDelays, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType imageAlignmentType)
+    {
       List<System.Drawing.Bitmap> sourceImages = new List<System.Drawing.Bitmap>();
       try
       {
@@ -146,6 +161,8 @@ namespace IVAE.MediaManipulation
               sourceImages[index].Dispose();
               sourceImages[index] = editedImage;
             }
+
+            //sourceImages[index].Save($@"{System.IO.Path.GetDirectoryName(fileNames[index])}\edited{System.IO.Path.GetFileNameWithoutExtension(fileNames[index])}{System.IO.Path.GetExtension(fileNames[index])}");
           }
         }
 
@@ -153,7 +170,7 @@ namespace IVAE.MediaManipulation
         OnChangeStep?.Invoke("Adding Images to GIF");
         string gifPath = $@"{System.IO.Path.GetDirectoryName(fileNames[0])}\ImagesToGif{GetCurrentTimeShort()}.gif";
         imageManipulator.OnProgress += ProgressUpdate;
-        imageManipulator.MakeGifFromImages(gifPath, sourceImages, frameDelay, finalDelay, loops);
+        imageManipulator.MakeGifFromImages(gifPath, sourceImages, animationDelays, loops);
         imageManipulator.OnProgress -= ProgressUpdate;
 
         return gifPath;
@@ -169,15 +186,15 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public string ConvertGifToGifv(string gifFilePath)
+    public string ConvertGifToVideo(string gifFilePath)
     {
-      OnChangeStep?.Invoke("Converting GIF to GIFV");
+      OnChangeStep?.Invoke("Converting GIF to Video");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(gifFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(gifFilePath)}.gifv";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(gifFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(gifFilePath)}.mp4";
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
-      videoManipulator.MakeGifvFromGif(outputPath, gifFilePath);
+      videoManipulator.MakeVideoFromGif(outputPath, gifFilePath);
       videoManipulator.OnProgress -= ProgressUpdate;
 
       return outputPath;
@@ -323,55 +340,11 @@ namespace IVAE.MediaManipulation
 
     public object Test(string[] fileNames)
     {
-      OnChangeStep?.Invoke("Test");
-      string videoFilePath = fileNames[0];
-
-      // Convert video to images.
-      string imageDirectory = ConvertVideoToImages(videoFilePath, (1/.35).ToString());
-      List<string> imagePaths = System.IO.Directory.GetFiles(imageDirectory).ToList();
-      imagePaths.Sort(new NaturalStringComparer());
-
-      OnChangeStep?.Invoke("Getting turn numbers.");
-
-      // Rename images.
-      string lastTurn = null;
-      int lastTurnCount = 0;
-      for (int i = 0; i < imagePaths.Count; i++)
+      using (ImageMagick.MagickImageCollection imageCollection = new ImageMagick.MagickImageCollection(fileNames[0]))
       {
-        OnProgressUpdate?.Invoke(i / (float)imagePaths.Count);
-
-        string turn;
-        using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(imagePaths[i]))
-        using (System.Drawing.Bitmap cbmp = new ImageManipulator().GetCroppedImage(bmp, 1123, 688, 30, 14))
-        using (ImageMagick.MagickImage magickImage = new ImageMagick.MagickImage(cbmp))
-        {
-          magickImage.Grayscale();
-          magickImage.Resize(new ImageMagick.MagickGeometry(magickImage.Width * 10, magickImage.Height * 10));
-          using (System.Drawing.Bitmap grayBmp = magickImage.ToBitmap())
-          {
-            string temppath = $@"{System.IO.Path.GetDirectoryName(imagePaths[i])}\{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])}_temp{System.IO.Path.GetExtension(imagePaths[i])}";
-            grayBmp.Save(temppath);
-            string txt = ImageFeatureDetector.GetNumberFromImage(temppath);
-            turn = txt.Split()[0];
-            //Console.WriteLine($"{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])} -> {txt}");
-            System.IO.File.Delete(temppath);
-          }
-        }
-
-        if (turn != lastTurn)
-          lastTurnCount = 0;
-        else
-          lastTurnCount++;
-
-        string newImagePath = $@"{System.IO.Path.GetDirectoryName(imagePaths[i])}\{turn}!end!{lastTurnCount}{System.IO.Path.GetExtension(imagePaths[i])}";
-        
-        System.IO.File.Move(imagePaths[i], newImagePath);
-        imagePaths[i] = newImagePath;
-
-        lastTurn = turn;
+        foreach (var v in imageCollection)
+          Console.WriteLine(v.AnimationDelay);
       }
-
-      ConvertImagesToGif(imagePaths.ToArray(), 400, 222, 650, 444, 3, 200, 0, 32, true, true, ImageAlignmentType.MAP);
 
       return null;
     }
@@ -386,6 +359,113 @@ namespace IVAE.MediaManipulation
       videoManipulator.OnProgress += ProgressUpdate;
       videoManipulator.Trim(outputPath, filePath, startTime, endTime);
       videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
+    public string TwwToMp4(string videoFilePath)
+    {
+      const int frameDelay = 60, finalFramDelay = 2400;
+
+      // Convert video to images.
+      string imageDirectory = ConvertVideoToImages(videoFilePath, (1 / .35).ToString());
+      List<string> imagePaths = System.IO.Directory.GetFiles(imageDirectory).ToList();
+      imagePaths.Sort(new NaturalStringComparer());
+
+      OnChangeStep?.Invoke("Getting Turn Numbers");
+
+      // Rename images.
+      //decimal lastTurn = 0;
+      //int lastTurnCount = 0;
+      Dictionary<decimal, int> turnCounts = new Dictionary<decimal, int>();
+      for (int i = 0; i < imagePaths.Count; i++)
+      {
+        OnProgressUpdate?.Invoke(i / (float)imagePaths.Count);
+
+        decimal turn;
+        using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(imagePaths[i]))
+        using (System.Drawing.Bitmap cbmp = new ImageManipulator().GetCroppedImage(bmp, 1123, 688, 30, 14))
+        using (ImageMagick.MagickImage magickImage = new ImageMagick.MagickImage(cbmp))
+        {
+          magickImage.Grayscale();
+          magickImage.Resize(new ImageMagick.MagickGeometry(magickImage.Width * 10, magickImage.Height * 10));
+          using (System.Drawing.Bitmap grayBmp = magickImage.ToBitmap())
+          {
+            string temppath = $@"{System.IO.Path.GetDirectoryName(imagePaths[i])}\{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])}_temp{System.IO.Path.GetExtension(imagePaths[i])}";
+            grayBmp.Save(temppath);
+            turn = ImageFeatureDetector.GetNumberFromImage(temppath);
+            //Console.WriteLine($"{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])} -> {txt}");
+            System.IO.File.Delete(temppath);
+          }
+        }
+
+        /*if (turn != lastTurn)
+          lastTurnCount = 0;
+        else
+          lastTurnCount++;*/
+        if (turnCounts.ContainsKey(turn))
+          turnCounts[turn]++;
+        else
+          turnCounts.Add(turn, 1);
+
+        string newImagePath = $@"{System.IO.Path.GetDirectoryName(imagePaths[i])}\{turn}!end!{turnCounts[turn]}{System.IO.Path.GetExtension(imagePaths[i])}";
+
+        System.IO.File.Move(imagePaths[i], newImagePath);
+        imagePaths[i] = newImagePath;
+
+        //lastTurn = turn;
+      }
+
+      OnChangeStep?.Invoke("Setting Animation Delays");
+
+      List<int> animationDelays = new List<int>();
+      for (int i = 0; i < imagePaths.Count; i++)
+      {
+        OnProgressUpdate?.Invoke(i / (float)imagePaths.Count);
+
+        if (i == imagePaths.Count - 1)
+        {
+          animationDelays.Add(finalFramDelay);
+          break;
+        }
+
+        string fileName = System.IO.Path.GetFileNameWithoutExtension(imagePaths[i]);
+        decimal turn = decimal.Parse(fileName.Substring(0, fileName.IndexOf("!end!")));
+        int count = int.Parse(fileName.Substring(fileName.IndexOf("!end!") + 5));
+
+        int delay = (int)Math.Round(frameDelay / (float)turnCounts[turn]);
+        if (delay < 1)
+          delay = 1;
+
+        // If this is the last image of a turn and there isn't an image for the next turn: ...
+        if (count == turnCounts[turn] && !turnCounts.ContainsKey(turn + 1))
+        {
+          int skippedTurns = 1;
+          while (!turnCounts.ContainsKey(turn + 1 + skippedTurns))
+            skippedTurns++;
+
+          delay += skippedTurns * frameDelay;
+        }
+
+        animationDelays.Add(delay);
+
+        Console.WriteLine($"{turn}: {delay}");
+      }
+
+      string gifPath = ConvertImagesToGif(imagePaths.ToArray(), 400, 222, 650, 444, animationDelays, 0, 32, true, true, ImageAlignmentType.MAP);
+
+      string newVideoPath = ConvertGifToVideo(gifPath);
+
+      OnChangeStep?.Invoke("Changing Video Playback Rate");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_tww.mp4";
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.ChangeVideoSpeed(outputPath, newVideoPath, 12, 20);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      OnChangeStep?.Invoke("Deleting Temporary Files");
+      System.IO.Directory.Delete(imageDirectory, true);
 
       return outputPath;
     }

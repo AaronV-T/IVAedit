@@ -21,7 +21,7 @@ namespace IVAE.MediaManipulation
 
   public static class ImageFeatureDetector
   {
-    public static string GetNumberFromImage(string imagePath)
+    public static decimal GetNumberFromImage(string imagePath)
     {
       /*using (Tesseract.TesseractEngine tesseractEngine = new Tesseract.TesseractEngine(@"./tessdata", "eng", Tesseract.EngineMode.Default))
       using (Pix pix = PixConverter.ToPix(image))
@@ -38,7 +38,11 @@ namespace IVAE.MediaManipulation
 
       using (tessBaseAPI.SetImage(imagePath))
       {
-        return tessBaseAPI.GetUTF8Text().Trim();
+        string imageText = tessBaseAPI.GetUTF8Text().Trim();
+        if (!decimal.TryParse(imageText, out decimal num))
+          throw new Exception($"Unable to get a valid number from '{imagePath}'. Text: '{imageText}'");
+
+        return num;
       }
     }
 
@@ -60,7 +64,7 @@ namespace IVAE.MediaManipulation
         if (matchingTechnique == MatchingTechnique.FAST)
         {
           if (detectorParameter <= 0)
-            detectorParameter = 75;
+            detectorParameter = 50;
 
           detector = new FastDetector((int)detectorParameter);
           descriptor = new BriefDescriptorExtractor();
@@ -139,7 +143,7 @@ namespace IVAE.MediaManipulation
       using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
       {
         Mat mask;
-        FindMatches(modelImage, observedImage, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography, MatchingTechnique.FAST, 10000);
+        FindMatches(modelImage, observedImage, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography, MatchingTechnique.FAST, 1000);
 
         var maskMatrix = new Matrix<byte>(mask.Rows, mask.Cols);
         mask.CopyTo(maskMatrix);

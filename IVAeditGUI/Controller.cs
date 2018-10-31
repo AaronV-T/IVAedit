@@ -20,7 +20,7 @@ namespace IVAeditGUI
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
       this.mainWindow.OnCropButtonClick += Crop;
       this.mainWindow.OnDrawMatchesButtonClick += DrawMatches;
-      this.mainWindow.OnGifToGifvButtonClick += ConvertGifToGifv;
+      this.mainWindow.OnGifToVideoButtonClick += ConvertGifToVideo;
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
       this.mainWindow.OnExtractAudioButtonClick += ExtractAudio;
       this.mainWindow.OnNormalizeVolumeButtonClick += NormalizeVolume;
@@ -28,6 +28,7 @@ namespace IVAeditGUI
       this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
       this.mainWindow.OnTrimButtonClick += Trim;
+      this.mainWindow.OnTwwToMp4ButtonClick += TwwToMp4;
       this.mainWindow.OnVideoToImagesButtonClick += ConvertVideoToImages;
 
       try
@@ -302,7 +303,7 @@ namespace IVAeditGUI
       }
     }
 
-    public async void ConvertGifToGifv()
+    public async void ConvertGifToVideo()
     {
       try
       {
@@ -325,7 +326,7 @@ namespace IVAeditGUI
         string gifvPath = null;
         await Task.Factory.StartNew(() =>
         {
-          gifvPath = taskHandler.ConvertGifToGifv(openFileDialog.FileName);
+          gifvPath = taskHandler.ConvertGifToVideo(openFileDialog.FileName);
         });
 
         mainWindow.SetMessage($"Gifv created '{gifvPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
@@ -703,6 +704,42 @@ namespace IVAeditGUI
         });
 
         mainWindow.SetMessage($"Trimmed video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void TwwToMp4()
+    {
+      try
+      {
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select Video.";
+        openFileDialog.Multiselect = false;
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.TwwToMp4(openFileDialog.FileName);
+        });
+
+        mainWindow.SetMessage($"TWW Gif '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
         System.Diagnostics.Process.Start(outputPath);
       }
       catch (Exception ex)
