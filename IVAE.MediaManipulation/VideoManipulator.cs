@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Accord.Video.FFMPEG;
 
 namespace IVAE.MediaManipulation
 {
@@ -19,8 +18,18 @@ namespace IVAE.MediaManipulation
         throw new ArgumentNullException(nameof(outputPath));
       if (string.IsNullOrEmpty(videoFilepath))
         throw new ArgumentNullException(nameof(videoFilepath));
-      if (alsoChangeAudio && (newPlaybackRate < 0.5f || newPlaybackRate > 2.0f))
-        throw new ArgumentOutOfRangeException(nameof(newPlaybackRate));
+
+      if (alsoChangeAudio && string.IsNullOrWhiteSpace(GetAudioCodecFromVideo(videoFilepath)))
+        alsoChangeAudio = false;
+
+      if (alsoChangeAudio) {
+        if (newPlaybackRate < 0)
+          throw new ArgumentOutOfRangeException(nameof(newPlaybackRate));
+        if (newPlaybackRate < 0.5f && !(new List<float> { 0.25f, 0.125f, 0.0625f, 0.03125f, 0.015625f, 0.0078125f, 0.00390625f }).Contains(newPlaybackRate))
+          throw new ArgumentException("Playback rates lower than 0.5 must be: 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, or 0.00390625.");
+        if (newPlaybackRate > 2 && !(new List<float> { 4, 8, 16, 32, 64, 128, 256 }).Contains(newPlaybackRate))
+          throw new ArgumentException("Playback rates higher than 2 must be: 4, 8, 16, 32, 64, 128, or 256.");
+      }
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
@@ -33,7 +42,33 @@ namespace IVAE.MediaManipulation
 
       string args;
       if (alsoChangeAudio)
-        args = $"-i \"{videoFilepath}\" -filter_complex \"[0:v]setpts={setptsVal}*PTS[v];[0:a]atempo={newPlaybackRate}[a]\" -map \"[v]\" -map \"[a]\" \"{outputPath}\"";
+      {
+        string audioArg;
+        if (newPlaybackRate < 0.5f)
+        {
+          audioArg = "atempo=0.5";
+          float temp = newPlaybackRate;
+          while (temp < 0.5f)
+          {
+            temp /= 0.5f;
+            audioArg += ",atempo=0.5";
+          }
+        }
+        else if (newPlaybackRate > 2)
+        {
+          audioArg = "atempo=2.0";
+          float temp = newPlaybackRate;
+          while (temp > 2)
+          {
+            temp /= 2;
+            audioArg += ",atempo=2.0";
+          }
+        }
+        else
+          audioArg = $"atempo={newPlaybackRate}";
+
+        args = $"-i \"{videoFilepath}\" {frameRateArg}-filter_complex \"[0:v]setpts={setptsVal}*PTS[v];[0:a]{audioArg}[a]\" -map \"[v]\" -map \"[a]\" \"{outputPath}\"";
+      }
       else
         args = $"-i \"{videoFilepath}\" {frameRateArg}-filter:v \"setpts={setptsVal}*PTS\" -an \"{outputPath}\"";
 
@@ -47,6 +82,9 @@ namespace IVAE.MediaManipulation
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;
+
+      Console.WriteLine(newPlaybackRate);
+      Console.WriteLine(args);
     }
 
     public void CropVideo(string outputPath, string videoPath, int x, int y, int width, int height)
@@ -96,8 +134,7 @@ namespace IVAE.MediaManipulation
       if (string.IsNullOrEmpty(videoPath))
         throw new ArgumentNullException(nameof(videoPath));
 
-      string audioCodec = new FFProbeProcessRunner().Run($"-v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {videoPath}");
-      string outputPath = outputPathWithoutExtension + MediaTypeHelper.GetFileExtensionForAudioCodec(audioCodec);
+      string outputPath = outputPathWithoutExtension + MediaTypeHelper.GetFileExtensionForAudioCodec(GetAudioCodecFromVideo(videoPath));
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
@@ -208,24 +245,17 @@ namespace IVAE.MediaManipulation
 
     public void Test(string path)
     {
-      using (VideoFileReader vfr = new VideoFileReader())
-      {
-        vfr.Open(path);
-
-        for (int i = 0; i < vfr.FrameCount; i++)
-        {
-          //System.Drawing.Bitmap frame = vfr.ReadVideoFrame();
-        }
-
-        Console.WriteLine($"{vfr.BitRate} {vfr.FrameRate.ToDouble()} {vfr.FrameCount} {vfr.CodecName}");
-
-        vfr.Close();
-      }
+      
     }
 
     private void DurationMessageReceived(double duration)
     {
       currentVideoDurationInMS = duration;
+    }
+
+    private string GetAudioCodecFromVideo(string videoFilepath)
+    {
+      return new FFProbeProcessRunner().Run($"-v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {videoFilepath}");
     }
 
     private void TimeMessageReceived(double time)

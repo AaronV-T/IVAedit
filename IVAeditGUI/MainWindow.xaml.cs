@@ -23,6 +23,7 @@ namespace IVAeditGUI
     public event Action
       OnAdjustVolumeButtonClick,
       OnAlignImageButtonClick,
+      OnChangeSpeedButtonClick,
       OnCombineGifsButtonClick,
       OnCropButtonClick,
       OnDrawMatchesButtonClick,
@@ -64,6 +65,11 @@ namespace IVAeditGUI
     private void btnAlignImage_Click(object sender, RoutedEventArgs e)
     {
       OnAlignImageButtonClick?.Invoke();
+    }
+
+    private void btnChangeSpeed_Click(object sender, RoutedEventArgs e)
+    {
+      OnChangeSpeedButtonClick?.Invoke();
     }
 
     private void btnCombineGifs_Click(object sender, RoutedEventArgs e)

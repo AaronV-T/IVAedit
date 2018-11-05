@@ -15,7 +15,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Adjusting Volume");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_AdjustedVolume{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_VolumeAdjusted{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
 
       AudioManipulator audioManipulator = new AudioManipulator();
       audioManipulator.OnProgress += ProgressUpdate;
@@ -40,6 +40,30 @@ namespace IVAE.MediaManipulation
         imageManipulator.OnProgress -= ProgressUpdate;
         return outputPath;
       }
+    }
+
+    public string ChangeAudioOrVideoPlaybackSpeed(string filePath, float newPlaybackRate, float newFrameRate = 0)
+    {
+      OnChangeStep?.Invoke("Changing Playback Speed");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_SpeedAdjusted{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+
+      MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
+      if (mediaType == MediaType.AUDIO)
+      {
+        throw new NotImplementedException();
+      }
+      else if (mediaType == MediaType.VIDEO)
+      {
+        VideoManipulator videoManipulator = new VideoManipulator();
+        videoManipulator.OnProgress += ProgressUpdate;
+        videoManipulator.ChangeVideoSpeed(outputPath, filePath, newPlaybackRate, newFrameRate, true);
+        videoManipulator.OnProgress -= ProgressUpdate;
+      }
+      else
+        throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
+
+      return outputPath;
     }
 
     public string CombineGifs(string[] fileNames, int gifsPerLine)
@@ -204,7 +228,7 @@ namespace IVAE.MediaManipulation
     {
       OnChangeStep?.Invoke("Cropping");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Cropped{GetCurrentTimeShort()}{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Cropped{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
 
       MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
       if (mediaType == MediaType.IMAGE)
@@ -375,8 +399,6 @@ namespace IVAE.MediaManipulation
       OnChangeStep?.Invoke("Getting Turn Numbers");
 
       // Rename images.
-      //decimal lastTurn = 0;
-      //int lastTurnCount = 0;
       Dictionary<decimal, int> turnCounts = new Dictionary<decimal, int>();
       for (int i = 0; i < imagePaths.Count; i++)
       {
@@ -399,10 +421,6 @@ namespace IVAE.MediaManipulation
           }
         }
 
-        /*if (turn != lastTurn)
-          lastTurnCount = 0;
-        else
-          lastTurnCount++;*/
         if (turnCounts.ContainsKey(turn))
           turnCounts[turn]++;
         else
@@ -412,8 +430,6 @@ namespace IVAE.MediaManipulation
 
         System.IO.File.Move(imagePaths[i], newImagePath);
         imagePaths[i] = newImagePath;
-
-        //lastTurn = turn;
       }
 
       OnChangeStep?.Invoke("Setting Animation Delays");

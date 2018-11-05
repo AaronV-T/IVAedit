@@ -17,6 +17,7 @@ namespace IVAeditGUI
 
       this.mainWindow.OnAdjustVolumeButtonClick += AdjustVolume;
       this.mainWindow.OnAlignImageButtonClick += AlignImage;
+      this.mainWindow.OnChangeSpeedButtonClick += ChangeSpeed;
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
       this.mainWindow.OnCropButtonClick += Crop;
       this.mainWindow.OnDrawMatchesButtonClick += DrawMatches;
@@ -70,6 +71,8 @@ namespace IVAeditGUI
           mainWindow.tbxVolume.Text = settings["Volume"];
         if (settings.ContainsKey("FPS"))
           mainWindow.tbxFPS.Text = settings["FPS"];
+        if (settings.ContainsKey("Modifier"))
+          mainWindow.tbxModifier.Text = settings["Modifier"];
       }
       catch (Exception ex)
       {
@@ -169,6 +172,53 @@ namespace IVAeditGUI
 
         mainWindow.SetMessage($"Image aligned '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
 
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void ChangeSpeed()
+    {
+      try
+      {
+        float fps = 0, playbackRate = 0;
+        if (mainWindow.tbxFPS.Text != string.Empty && !float.TryParse(mainWindow.tbxFPS.Text, out fps))
+          throw new ArgumentException("FPS is not a valid number.");
+        if (!float.TryParse(mainWindow.tbxModifier.Text, out playbackRate))
+          throw new ArgumentException("Modifier (playback rate) is not a valid number.");
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "FPS", fps.ToString() },
+          { "Modifier", playbackRate.ToString() }
+        });
+
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select Video or Audio File.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.ChangeAudioOrVideoPlaybackSpeed(openFileDialog.FileName, playbackRate, fps);
+        });
+
+        mainWindow.SetMessage($"File with adjusted speed created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
         System.Diagnostics.Process.Start(outputPath);
       }
       catch (Exception ex)
