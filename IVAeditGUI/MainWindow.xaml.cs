@@ -31,6 +31,7 @@ namespace IVAeditGUI
       OnImagesToGifButtonClick,
       OnGifToVideoButtonClick,
       OnNormalizeVolumeButtonClick,
+      OnResizeButtonClick,
       OnStabilizeVideoButtonClick,
       OnStitchImagesButtonClick,
       OnTestButtonClick,
@@ -105,6 +106,11 @@ namespace IVAeditGUI
     private void btnNormalizeVolume_Click(object sender, RoutedEventArgs e)
     {
       OnNormalizeVolumeButtonClick?.Invoke();
+    }
+
+    private void btnResize_Click(object sender, RoutedEventArgs e)
+    {
+      OnResizeButtonClick?.Invoke();
     }
 
     private void btnStabilizeVideo_Click(object sender, RoutedEventArgs e)

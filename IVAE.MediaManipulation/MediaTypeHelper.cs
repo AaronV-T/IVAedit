@@ -27,7 +27,7 @@ namespace IVAE.MediaManipulation
       else if (audioCodec == "wav")
         return ".wav";
       else
-        throw new NotImplementedException($"Unsupported codec: {audioCodec}");
+        throw new NotImplementedException($"Unsupported audio codec: {audioCodec}");
     }
 
     public static MediaType GetMediaTypeFromFileName(string fileName)

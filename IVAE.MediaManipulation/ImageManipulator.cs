@@ -340,12 +340,44 @@ namespace IVAE.MediaManipulation
 
     public Bitmap GetImageWithDrawnText(Bitmap image, string text, int fontSize)
     {
+      if (image == null)
+        throw new ArgumentNullException(nameof(image));
+
       DateTime start = DateTime.Now;
       using (MagickImage mi = new MagickImage(image))
       {
         DrawTextOnImage(mi, text, fontSize);
         return mi.ToBitmap();
       }
+    }
+
+    public Bitmap GetResizedImage(Bitmap image, int width, int height)
+    {
+      if (image == null)
+        throw new ArgumentNullException(nameof(image));
+      if (width == 0 && height == 0)
+        throw new ArgumentException($"width or height must be greater than 0.");
+      if (width < 0)
+        throw new ArgumentOutOfRangeException(nameof(width));
+      if (height < 0)
+        throw new ArgumentOutOfRangeException(nameof(height));
+
+      using (MagickImage magickImage = new MagickImage(image))
+      {
+        magickImage.Resize(width, height);
+
+        return magickImage.ToBitmap();
+      }
+    }
+
+    public Bitmap GetScaledImage(Bitmap image, float scaleModifier)
+    {
+      if (image == null)
+        throw new ArgumentNullException(nameof(image));
+      if (scaleModifier <= 0)
+        throw new ArgumentOutOfRangeException(nameof(scaleModifier));
+
+      return GetResizedImage(image, (int)Math.Round(image.Width * scaleModifier), 0);
     }
 
     public Bitmap GetStitchedImage(List<Bitmap> sourceImages)

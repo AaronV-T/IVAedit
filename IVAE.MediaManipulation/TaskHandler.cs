@@ -44,14 +44,17 @@ namespace IVAE.MediaManipulation
 
     public string ChangeAudioOrVideoPlaybackSpeed(string filePath, float newPlaybackRate, float newFrameRate = 0)
     {
-      OnChangeStep?.Invoke("Changing Playback Speed");
+      OnChangeStep?.Invoke("Changing Playback Rate");
 
       string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_SpeedAdjusted{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
 
       MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
       if (mediaType == MediaType.AUDIO)
       {
-        throw new NotImplementedException();
+        AudioManipulator audioManipulator = new AudioManipulator();
+        audioManipulator.OnProgress += ProgressUpdate;
+        audioManipulator.AdjustAudioSpeed(outputPath, filePath, newPlaybackRate);
+        audioManipulator.OnProgress -= ProgressUpdate;
       }
       else if (mediaType == MediaType.VIDEO)
       {
@@ -317,6 +320,65 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
+    public string ResizeImageOrVideo(string filePath, int width, int height, float scaleFactor = 0)
+    {
+      bool resize = false, scale = false;
+      if (width > 0 || height > 0)
+        resize = true;
+      if (scaleFactor > 0)
+        scale = true;
+
+      if (!resize && !scale)
+        throw new ArgumentException("width/height or scaleFactor must be greater than 0 to resize an image or video.");
+      if (resize && scale)
+        throw new ArgumentException("width/height and scaleFactor can not be greater than 0. Set either width/height or scaleFactor.");
+
+      OnChangeStep?.Invoke("Resizing");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Resized{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+
+      MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
+      if (mediaType == MediaType.IMAGE)
+      {
+        using (System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(filePath))
+        {
+          ImageManipulator imageManipulator = new ImageManipulator();
+          System.Drawing.Bitmap newBitmap = null;
+          try
+          {
+            if (resize)
+              newBitmap = imageManipulator.GetResizedImage(bitmap, width, height);
+            else if (scale)
+              newBitmap = imageManipulator.GetScaledImage(bitmap, scaleFactor);
+
+            newBitmap.Save(outputPath);
+          }
+          catch (Exception)
+          {
+            throw;
+          }
+          finally
+          {
+            newBitmap?.Dispose();
+          }
+        }
+      }
+      else if (mediaType == MediaType.VIDEO)
+      {
+        VideoManipulator videoManipulator = new VideoManipulator();
+        videoManipulator.OnProgress += ProgressUpdate;
+        if (resize)
+          videoManipulator.ResizeVideo(outputPath, filePath, width, height);
+        else if (scale)
+          videoManipulator.ScaleVideo(outputPath, filePath, scaleFactor);
+        videoManipulator.OnProgress -= ProgressUpdate;
+      }
+      else
+        throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
+
+      return outputPath;
+    }
+
     public string StabilizeVideo(string videoFilePath)
     {
       OnChangeStep?.Invoke("Stabilizing Video");
@@ -364,11 +426,7 @@ namespace IVAE.MediaManipulation
 
     public object Test(string[] fileNames)
     {
-      using (ImageMagick.MagickImageCollection imageCollection = new ImageMagick.MagickImageCollection(fileNames[0]))
-      {
-        foreach (var v in imageCollection)
-          Console.WriteLine(v.AnimationDelay);
-      }
+      new VideoManipulator().Test(fileNames[0]);
 
       return null;
     }
@@ -387,7 +445,34 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
-    public string TwwToMp4(string videoFilePath)
+    public string TwwToMp4(string videoFilePath, int x, int y, int width, int height)
+    {
+      if (x == 0 && y == 0 && width == 0 && height == 0)
+      {
+        x = 400;
+        y = 222;
+        width = 650;
+        height = 444;
+      }
+
+      return WarhammerTimelapseHelper(videoFilePath, x, y, width, height);
+    }
+
+    private string GetCurrentTimeShort()
+    {
+      byte[] bytes = BitConverter.GetBytes(long.Parse(DateTime.Now.ToString("yyMMddHHmmss")));
+      Array.Reverse(bytes);
+
+      char[] array = Convert.ToBase64String(bytes).Trim('A', '=').Replace('/', ')').ToCharArray();
+      return new string(array);
+    }
+
+    private void ProgressUpdate(float percent)
+    {
+      OnProgressUpdate?.Invoke(percent);
+    }
+
+    private string WarhammerTimelapseHelper(string videoFilePath, int x, int y, int width, int height)
     {
       const int frameDelay = 60, finalFramDelay = 2400;
 
@@ -468,13 +553,13 @@ namespace IVAE.MediaManipulation
         Console.WriteLine($"{turn}: {delay}");
       }
 
-      string gifPath = ConvertImagesToGif(imagePaths.ToArray(), 400, 222, 650, 444, animationDelays, 0, 32, true, true, ImageAlignmentType.MAP);
+      string gifPath = ConvertImagesToGif(imagePaths.ToArray(), x, y, width, height, animationDelays, 0, 32, true, true, ImageAlignmentType.MAP);
 
       string newVideoPath = ConvertGifToVideo(gifPath);
 
       OnChangeStep?.Invoke("Changing Video Playback Rate");
 
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_tww.mp4";
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_timelapse.mp4";
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
       videoManipulator.ChangeVideoSpeed(outputPath, newVideoPath, 12, 20);
@@ -484,20 +569,6 @@ namespace IVAE.MediaManipulation
       System.IO.Directory.Delete(imageDirectory, true);
 
       return outputPath;
-    }
-
-    private string GetCurrentTimeShort()
-    {
-      byte[] bytes = BitConverter.GetBytes(long.Parse(DateTime.Now.ToString("yyMMddHHmmss")));
-      Array.Reverse(bytes);
-
-      char[] array = Convert.ToBase64String(bytes).Trim('A', '=').Replace('/', ')').ToCharArray();
-      return new string(array);
-    }
-
-    private void ProgressUpdate(float percent)
-    {
-      OnProgressUpdate?.Invoke(percent);
     }
   }
 }

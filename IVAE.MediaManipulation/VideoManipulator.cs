@@ -82,9 +82,6 @@ namespace IVAE.MediaManipulation
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;
-
-      Console.WriteLine(newPlaybackRate);
-      Console.WriteLine(args);
     }
 
     public void CropVideo(string outputPath, string videoPath, int x, int y, int width, int height)
@@ -199,6 +196,27 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
+    public void ResizeVideo(string outputPath, string videoPath, int width, int height)
+    {
+      if (width <= 0 && height <= 0)
+        throw new ArgumentException($"width or height must be greater than 0 to resize a video.");
+
+      if (width == 0)
+        width = -2;
+      if (height == 0)
+        height = -2;
+
+      ResizeVideoHelper(outputPath, videoPath, width.ToString(), height.ToString());
+    }
+
+    public void ScaleVideo(string outputPath, string videoPath, float scaleFactor)
+    {
+      if (scaleFactor <= 0)
+        throw new ArgumentOutOfRangeException(nameof(scaleFactor));
+
+      ResizeVideoHelper(outputPath, videoPath, $"trunc(iw*{scaleFactor}/2)*2", $"trunc(ih*{scaleFactor}/2)*2");
+    }
+
     public void StabilizeVideo(string outputPath, string videoPath)
     {
       if (string.IsNullOrEmpty(outputPath))
@@ -245,7 +263,12 @@ namespace IVAE.MediaManipulation
 
     public void Test(string path)
     {
-      
+      using (System.IO.StreamWriter sw = new System.IO.StreamWriter("testoutput.txt"))
+      {
+        sw.WriteLine(new FFProbeProcessRunner().Run($"-v error -show_format -show_streams {path}"));
+      }
+
+      System.Diagnostics.Process.Start("testoutput.txt");
     }
 
     private void DurationMessageReceived(double duration)
@@ -256,6 +279,30 @@ namespace IVAE.MediaManipulation
     private string GetAudioCodecFromVideo(string videoFilepath)
     {
       return new FFProbeProcessRunner().Run($"-v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {videoFilepath}");
+    }
+
+    private void ResizeVideoHelper(string outputPath, string videoPath, string widthArg, string heightArg)
+    {
+      if (string.IsNullOrWhiteSpace(widthArg))
+        throw new ArgumentNullException(nameof(widthArg));
+      if (string.IsNullOrWhiteSpace(heightArg))
+        throw new ArgumentNullException(nameof(heightArg));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf scale={widthArg}:{heightArg} \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+
+      Console.WriteLine($"-i \"{videoPath}\" -vf \"scale={widthArg}:{heightArg}\" \"{outputPath}\"");
     }
 
     private void TimeMessageReceived(double time)

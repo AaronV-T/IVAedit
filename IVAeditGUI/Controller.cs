@@ -25,6 +25,7 @@ namespace IVAeditGUI
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
       this.mainWindow.OnExtractAudioButtonClick += ExtractAudio;
       this.mainWindow.OnNormalizeVolumeButtonClick += NormalizeVolume;
+      this.mainWindow.OnResizeButtonClick += Resize;
       this.mainWindow.OnStabilizeVideoButtonClick += StabilizeVideo;
       this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
@@ -611,6 +612,57 @@ namespace IVAeditGUI
       }
     }
 
+    public async void Resize()
+    {
+      try
+      {
+        int width = 0, height = 0;
+        float scaleFactor = 0;
+        if (mainWindow.tbxWidth.Text != string.Empty && !int.TryParse(mainWindow.tbxWidth.Text, out width))
+          throw new ArgumentException($"Width is not a valid integer.");
+        if (mainWindow.tbxHeight.Text != string.Empty && !int.TryParse(mainWindow.tbxHeight.Text, out height))
+          throw new ArgumentException($"Height is not a valid integer.");
+        if (mainWindow.tbxModifier.Text != string.Empty && !float.TryParse(mainWindow.tbxModifier.Text, out scaleFactor))
+          throw new ArgumentException($"ScaleFactor is not a valid number.");
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "Width", width.ToString() },
+          { "Height", height.ToString() },
+          { "Modifier", scaleFactor.ToString() }
+        });
+
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select Image or Video File.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.ResizeImageOrVideo(openFileDialog.FileName, width, height, scaleFactor);
+        });
+
+        mainWindow.SetMessage($"Resized file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
     public async void StabilizeVideo()
     {
       try
@@ -767,6 +819,23 @@ namespace IVAeditGUI
     {
       try
       {
+        int x = 0, y = 0, width = 0, height = 0;
+        if (mainWindow.tbxXCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxXCoordinate.Text, out x))
+          throw new ArgumentException($"X coordinate is not a valid integer.");
+        if (mainWindow.tbxYCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxYCoordinate.Text, out y))
+          throw new ArgumentException($"Y coordinate is not a valid integer.");
+        if (mainWindow.tbxWidth.Text != string.Empty && !int.TryParse(mainWindow.tbxWidth.Text, out width))
+          throw new ArgumentException($"Width is not a valid integer.");
+        if (mainWindow.tbxHeight.Text != string.Empty && !int.TryParse(mainWindow.tbxHeight.Text, out height))
+          throw new ArgumentException($"Height is not a valid integer.");
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "XCoordinate", x.ToString() },
+          { "YCoordinate", y.ToString() },
+          { "Width", width.ToString() },
+          { "Height", height.ToString() }
+        });
+
         System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
         openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
         openFileDialog.Title = "Select Video.";
@@ -786,10 +855,10 @@ namespace IVAeditGUI
         string outputPath = null;
         await Task.Factory.StartNew(() =>
         {
-          outputPath = taskHandler.TwwToMp4(openFileDialog.FileName);
+          outputPath = taskHandler.TwwToMp4(openFileDialog.FileName, x, y, width, height);
         });
 
-        mainWindow.SetMessage($"TWW Gif '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        mainWindow.SetMessage($"TWW Timelapse '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
         System.Diagnostics.Process.Start(outputPath);
       }
       catch (Exception ex)
