@@ -83,6 +83,20 @@ namespace IVAE.MediaManipulation
       return newGifPath;
     }
 
+    public string CombineVideos(string videoPath1, string videoPath2, bool combineHorizontally)
+    {
+      OnChangeStep?.Invoke("Combining Videos");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoPath1)}\{System.IO.Path.GetFileNameWithoutExtension(videoPath1)}_Combined{GetCurrentTimeShort()}{System.IO.Path.GetExtension(videoPath1)}";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.CombineVideos(outputPath, videoPath1, videoPath2, combineHorizontally);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
     public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, int frameDelay, int finalDelay, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType imageAlignmentType)
     {
       List<int> animationDelays = new List<int>();

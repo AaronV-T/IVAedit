@@ -84,6 +84,46 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
+    public void CombineVideos(string outputPath, string videoPath1, string videoPath2, bool combineHorizontally)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath1))
+        throw new ArgumentNullException(nameof(videoPath1));
+      if (string.IsNullOrEmpty(videoPath2))
+        throw new ArgumentNullException(nameof(videoPath2));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      string stackArg = null;
+      if (combineHorizontally)
+        stackArg = "hstack";
+      else
+        stackArg = "vstack";
+
+      bool video1HasAudio = !string.IsNullOrEmpty(GetAudioCodecFromVideo(videoPath1));
+      bool video2HasAudio = !string.IsNullOrEmpty(GetAudioCodecFromVideo(videoPath2));
+      string args = null;
+      if (video1HasAudio && video2HasAudio)
+        args = $"-i \"{videoPath1}\" -i \"{videoPath2}\" -filter_complex \"[0:v][1:v]{stackArg}=inputs=2[v];[0:a][1:a]amerge[a]\" -map \"[v]\" -map \"[a]\" -ac 2 \"{outputPath}\"";
+      else if (!video1HasAudio && !video2HasAudio)
+        args = $"-i \"{videoPath1}\" -i \"{videoPath2}\" -filter_complex \"[0:v][1:v]{stackArg}=inputs=2[v]\" -map \"[v]\" \"{outputPath}\"";
+      else
+        throw new NotImplementedException();
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run(args);
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     public void CropVideo(string outputPath, string videoPath, int x, int y, int width, int height)
     {
       if (string.IsNullOrEmpty(outputPath))
@@ -265,7 +305,7 @@ namespace IVAE.MediaManipulation
     {
       using (System.IO.StreamWriter sw = new System.IO.StreamWriter("testoutput.txt"))
       {
-        sw.WriteLine(new FFProbeProcessRunner().Run($"-v error -show_format -show_streams {path}"));
+        sw.WriteLine(new FFProbeProcessRunner().Run($"-v error -show_format -show_streams -print_format json {path}"));
       }
 
       System.Diagnostics.Process.Start("testoutput.txt");

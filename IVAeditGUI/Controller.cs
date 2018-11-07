@@ -19,6 +19,7 @@ namespace IVAeditGUI
       this.mainWindow.OnAlignImageButtonClick += AlignImage;
       this.mainWindow.OnChangeSpeedButtonClick += ChangeSpeed;
       this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
+      this.mainWindow.OnCombineVideosButtonClick += CombineVideos;
       this.mainWindow.OnCropButtonClick += Crop;
       this.mainWindow.OnDrawMatchesButtonClick += DrawMatches;
       this.mainWindow.OnGifToVideoButtonClick += ConvertGifToVideo;
@@ -267,6 +268,66 @@ namespace IVAeditGUI
         mainWindow.SetMessage($"Gifs combined: {newGifPath}");
 
         System.Diagnostics.Process.Start(newGifPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void CombineVideos()
+    {
+      try
+      {
+        mainWindow.SetMessage("Combining Videos");
+
+        int modifier = 0;
+        if (mainWindow.tbxModifier.Text != string.Empty && !int.TryParse(mainWindow.tbxModifier.Text, out modifier))
+          throw new ArgumentException($"Modifier is not a valid integer.");
+
+        SettingsIO.SaveSettings(new Dictionary<string, string> {
+          { "Modifier", modifier.ToString() }
+        });
+
+        bool combineHorizontally = modifier == 0;
+
+        System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog1.Filter = $"Videos|{GetVideoFormatsFilterString()}";
+        openFileDialog1.Title = "Select first video.";
+        openFileDialog1.Multiselect = false;
+
+        if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog2.Filter = $"Videos|{GetVideoFormatsFilterString()}";
+        openFileDialog2.Title = "Select second video.";
+        openFileDialog2.Multiselect = false;
+
+        if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.CombineVideos(openFileDialog1.FileName, openFileDialog2.FileName, combineHorizontally);
+        });
+
+        mainWindow.SetMessage($"Videos combined '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+
+        System.Diagnostics.Process.Start(outputPath);
       }
       catch (Exception ex)
       {

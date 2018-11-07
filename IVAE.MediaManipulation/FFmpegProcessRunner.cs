@@ -24,8 +24,8 @@ namespace IVAE.MediaManipulation
 
         StringBuilder sb = new StringBuilder();
         process.EnableRaisingEvents = true;
-        process.OutputDataReceived += (s, e) => { Console.WriteLine(e.Data); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
-        process.ErrorDataReceived += (s, e) => { Console.WriteLine(e.Data); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
+        process.OutputDataReceived += (s, e) => { Console.WriteLine($"o: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
+        process.ErrorDataReceived += (s, e) => { Console.WriteLine($"e: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
 
         process.Start();
         process.BeginErrorReadLine();
