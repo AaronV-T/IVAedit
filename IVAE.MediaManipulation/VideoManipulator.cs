@@ -12,14 +12,14 @@ namespace IVAE.MediaManipulation
     private double currentVideoDurationInMS = -1;
     private int totalSteps = -1, currentStep = -1;
 
-    public void ChangeVideoSpeed(string outputPath, string videoFilepath, float newPlaybackRate, float newFramerate = 0, bool alsoChangeAudio = false)
+    public void AdjustVideoSpeed(string outputPath, string videoFilepath, float newPlaybackRate, float newFramerate = 0, bool alsoChangeAudio = false)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
       if (string.IsNullOrEmpty(videoFilepath))
         throw new ArgumentNullException(nameof(videoFilepath));
 
-      if (alsoChangeAudio && string.IsNullOrWhiteSpace(GetAudioCodecFromVideo(videoFilepath)))
+      if (alsoChangeAudio && !MediaFileInfo.FileHasAudio(videoFilepath))
         alsoChangeAudio = false;
 
       if (alsoChangeAudio) {
@@ -102,8 +102,8 @@ namespace IVAE.MediaManipulation
       else
         stackArg = "vstack";
 
-      bool video1HasAudio = !string.IsNullOrEmpty(GetAudioCodecFromVideo(videoPath1));
-      bool video2HasAudio = !string.IsNullOrEmpty(GetAudioCodecFromVideo(videoPath2));
+      bool video1HasAudio = MediaFileInfo.FileHasAudio(videoPath1);
+      bool video2HasAudio = MediaFileInfo.FileHasAudio(videoPath2);
       string args = null;
       if (video1HasAudio && video2HasAudio)
         args = $"-i \"{videoPath1}\" -i \"{videoPath2}\" -filter_complex \"[0:v][1:v]{stackArg}=inputs=2[v];[0:a][1:a]amerge[a]\" -map \"[v]\" -map \"[a]\" -ac 2 \"{outputPath}\"";
@@ -171,7 +171,7 @@ namespace IVAE.MediaManipulation
       if (string.IsNullOrEmpty(videoPath))
         throw new ArgumentNullException(nameof(videoPath));
 
-      string outputPath = outputPathWithoutExtension + MediaTypeHelper.GetFileExtensionForAudioCodec(GetAudioCodecFromVideo(videoPath));
+      string outputPath = outputPathWithoutExtension + MediaTypeHelper.GetFileExtensionForAudioCodec(new MediaFileInfo(videoPath).AudioStreams[0].CodecName);
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
@@ -297,8 +297,10 @@ namespace IVAE.MediaManipulation
       if (!string.IsNullOrEmpty(endTime))
         endArg = $"-to {endTime} ";
 
+      string args = $"-i \"{filePath}\" {startArg}{endArg}-async 1 \"{outputPath}\"";
+
       FFmpegProcessRunner fpr = new FFmpegProcessRunner();
-      fpr.Run($"-i \"{filePath}\" {startArg}{endArg}-codec copy \"{outputPath}\"");
+      fpr.Run(args);
     }
 
     public void Test(string path)
@@ -314,11 +316,6 @@ namespace IVAE.MediaManipulation
     private void DurationMessageReceived(double duration)
     {
       currentVideoDurationInMS = duration;
-    }
-
-    private string GetAudioCodecFromVideo(string videoFilepath)
-    {
-      return new FFProbeProcessRunner().Run($"-v error -select_streams a:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 {videoFilepath}");
     }
 
     private void ResizeVideoHelper(string outputPath, string videoPath, string widthArg, string heightArg)

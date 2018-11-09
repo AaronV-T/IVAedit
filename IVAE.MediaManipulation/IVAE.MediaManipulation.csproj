@@ -48,6 +48,9 @@
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.8.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
       <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.8.0\lib\net40\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
     </Reference>
+    <Reference Include="NCalc, Version=1.3.8.0, Culture=neutral, PublicKeyToken=973cde3f1cafed03, processorArchitecture=MSIL">
+      <HintPath>..\packages\ncalc.1.3.8\lib\NCalc.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -75,8 +78,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ExtensionMethods.cs" />
     <Compile Include="FFprobeProcessRunner.cs" />
     <Compile Include="FFmpegProcessRunner.cs" />
+    <Compile Include="FileInfo\FormatInfo.cs" />
+    <Compile Include="FileInfo\MediaFileInfo.cs" />
+    <Compile Include="FileInfo\StreamInfo.cs" />
+    <Compile Include="FileInfo\AudioStreamInfo.cs" />
+    <Compile Include="FileInfo\VideoStreamInfo.cs" />
     <Compile Include="MediaTypeHelper.cs" />
     <Compile Include="ImageFeatureDetector.cs" />
     <Compile Include="ImageManipulator.cs" />

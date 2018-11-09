@@ -49,6 +49,8 @@ namespace IVAE.MediaManipulation
 
     private double FFmpegTimeToMS(string timeString)
     {
+      if (timeString[0] == '-')
+        return -1;
       if (!System.Text.RegularExpressions.Regex.IsMatch(timeString, @"\d\d:\d\d:\d\d"))
         return -1;
 

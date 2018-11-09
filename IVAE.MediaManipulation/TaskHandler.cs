@@ -11,6 +11,33 @@ namespace IVAE.MediaManipulation
     public event Action<string> OnChangeStep;
     public event Action<float> OnProgressUpdate;
 
+    public string AdjustAudioOrVideoPlaybackSpeed(string filePath, float newPlaybackRate, float newFrameRate = 0)
+    {
+      OnChangeStep?.Invoke("Changing Playback Rate");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_SpeedAdjusted{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+
+      MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
+      if (mediaType == MediaType.AUDIO)
+      {
+        AudioManipulator audioManipulator = new AudioManipulator();
+        audioManipulator.OnProgress += ProgressUpdate;
+        audioManipulator.AdjustAudioSpeed(outputPath, filePath, newPlaybackRate);
+        audioManipulator.OnProgress -= ProgressUpdate;
+      }
+      else if (mediaType == MediaType.VIDEO)
+      {
+        VideoManipulator videoManipulator = new VideoManipulator();
+        videoManipulator.OnProgress += ProgressUpdate;
+        videoManipulator.AdjustVideoSpeed(outputPath, filePath, newPlaybackRate, newFrameRate, true);
+        videoManipulator.OnProgress -= ProgressUpdate;
+      }
+      else
+        throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
+
+      return outputPath;
+    }
+
     public string AdjustVolume(string filePath, string volume)
     {
       OnChangeStep?.Invoke("Adjusting Volume");
@@ -40,33 +67,6 @@ namespace IVAE.MediaManipulation
         imageManipulator.OnProgress -= ProgressUpdate;
         return outputPath;
       }
-    }
-
-    public string ChangeAudioOrVideoPlaybackSpeed(string filePath, float newPlaybackRate, float newFrameRate = 0)
-    {
-      OnChangeStep?.Invoke("Changing Playback Rate");
-
-      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_SpeedAdjusted{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
-
-      MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
-      if (mediaType == MediaType.AUDIO)
-      {
-        AudioManipulator audioManipulator = new AudioManipulator();
-        audioManipulator.OnProgress += ProgressUpdate;
-        audioManipulator.AdjustAudioSpeed(outputPath, filePath, newPlaybackRate);
-        audioManipulator.OnProgress -= ProgressUpdate;
-      }
-      else if (mediaType == MediaType.VIDEO)
-      {
-        VideoManipulator videoManipulator = new VideoManipulator();
-        videoManipulator.OnProgress += ProgressUpdate;
-        videoManipulator.ChangeVideoSpeed(outputPath, filePath, newPlaybackRate, newFrameRate, true);
-        videoManipulator.OnProgress -= ProgressUpdate;
-      }
-      else
-        throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
-
-      return outputPath;
     }
 
     public string CombineGifs(string[] fileNames, int gifsPerLine)
@@ -442,6 +442,18 @@ namespace IVAE.MediaManipulation
     {
       new VideoManipulator().Test(fileNames[0]);
 
+      var mfi = new MediaFileInfo(fileNames[0]);
+      foreach(var l in mfi.AudioStreams)
+      {
+        Console.WriteLine("\n\nAUDIO STREAM:");
+        Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(l, Newtonsoft.Json.Formatting.Indented));
+      }
+      foreach (var l in mfi.VideoStreams)
+      {
+        Console.WriteLine("\n\nVIDEO STREAM:");
+        Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(l, Newtonsoft.Json.Formatting.Indented));
+      }
+
       return null;
     }
 
@@ -576,7 +588,7 @@ namespace IVAE.MediaManipulation
       string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_timelapse.mp4";
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
-      videoManipulator.ChangeVideoSpeed(outputPath, newVideoPath, 12, 20);
+      videoManipulator.AdjustVideoSpeed(outputPath, newVideoPath, 12, 20);
       videoManipulator.OnProgress -= ProgressUpdate;
 
       OnChangeStep?.Invoke("Deleting Temporary Files");

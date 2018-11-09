@@ -61,8 +61,8 @@
     <Button x:Name="btnExtractAudio" Content="Extract Audio" HorizontalAlignment="Center" Margin="-105,270,0,0" VerticalAlignment="Top" Width="100" Click="btnExtractAudio_Click"/>
     <Button x:Name="btnStabilizeVideo" Content="Stabilize Video" HorizontalAlignment="Center" Margin="105,270,0,0" VerticalAlignment="Top" Width="100" Click="btnStabilizeVideo_Click"/>
 
-    <Button x:Name="btnAdjustVolume" Content="Adjust Volume" HorizontalAlignment="Center" Margin="-310,295,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustVolume_Click"/>
-    <Button x:Name="btnChangeSpeed" Content="Change Speed" HorizontalAlignment="Center" Margin="-105,295,0,0" VerticalAlignment="Top" Width="100" Click="btnChangeSpeed_Click"/>
+    <Button x:Name="btnAdjustSpeed" Content="Adjust Speed" HorizontalAlignment="Center" Margin="-310,295,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustSpeed_Click"/>
+    <Button x:Name="btnAdjustVolume" Content="Adjust Volume" HorizontalAlignment="Center" Margin="-105,295,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustVolume_Click"/>
     <Button x:Name="btnNormalizeVolume" Content="Normalize Volume" HorizontalAlignment="Center" Margin="105,295,0,0" VerticalAlignment="Top" Width="100" Click="btnNormalizeVolume_Click"/>
     <Button x:Name="btnTrim" Content="Trim" HorizontalAlignment="Center" Margin="310,295,0,0" VerticalAlignment="Top" Width="100" Click="btnTrim_Click"/>
 

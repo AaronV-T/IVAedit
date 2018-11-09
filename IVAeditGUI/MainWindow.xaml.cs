@@ -21,9 +21,9 @@ namespace IVAeditGUI
   public partial class MainWindow : Window
   {
     public event Action
+      OnAdjustSpeedButtonClick, 
       OnAdjustVolumeButtonClick,
       OnAlignImageButtonClick,
-      OnChangeSpeedButtonClick,
       OnCombineGifsButtonClick,
       OnCombineVideosButtonClick,
       OnCropButtonClick,
@@ -59,6 +59,11 @@ namespace IVAeditGUI
       }
     }
 
+    private void btnAdjustSpeed_Click(object sender, RoutedEventArgs e)
+    {
+      OnAdjustSpeedButtonClick?.Invoke();
+    }
+
     private void btnAdjustVolume_Click(object sender, RoutedEventArgs e)
     {
       OnAdjustVolumeButtonClick?.Invoke();
@@ -67,11 +72,6 @@ namespace IVAeditGUI
     private void btnAlignImage_Click(object sender, RoutedEventArgs e)
     {
       OnAlignImageButtonClick?.Invoke();
-    }
-
-    private void btnChangeSpeed_Click(object sender, RoutedEventArgs e)
-    {
-      OnChangeSpeedButtonClick?.Invoke();
     }
 
     private void btnCombineGifs_Click(object sender, RoutedEventArgs e)
