@@ -32,7 +32,9 @@ namespace IVAeditGUI
       OnImagesToGifButtonClick,
       OnGifToVideoButtonClick,
       OnNormalizeVolumeButtonClick,
+      OnRemoveAudioButtonClick,
       OnResizeButtonClick,
+      OnReverseButtonClick,
       OnStabilizeVideoButtonClick,
       OnStitchImagesButtonClick,
       OnTestButtonClick,
@@ -114,9 +116,19 @@ namespace IVAeditGUI
       OnNormalizeVolumeButtonClick?.Invoke();
     }
 
+    private void btnRemoveAudio_Click(object sender, RoutedEventArgs e)
+    {
+      OnRemoveAudioButtonClick?.Invoke();
+    }
+
     private void btnResize_Click(object sender, RoutedEventArgs e)
     {
       OnResizeButtonClick?.Invoke();
+    }
+
+    private void btnReverse_Click(object sender, RoutedEventArgs e)
+    {
+      OnReverseButtonClick?.Invoke();
     }
 
     private void btnStabilizeVideo_Click(object sender, RoutedEventArgs e)

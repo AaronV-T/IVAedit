@@ -334,6 +334,20 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
+    public string RemoveAudioFromVideo(string videoFilePath)
+    {
+      OnChangeStep?.Invoke("Removing Audio");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_AudioRemoved{GetCurrentTimeShort()}{System.IO.Path.GetExtension(videoFilePath)}";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.RemoveAudioFromVideo(outputPath, videoFilePath);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
     public string ResizeImageOrVideo(string filePath, int width, int height, float scaleFactor = 0)
     {
       bool resize = false, scale = false;
@@ -389,6 +403,34 @@ namespace IVAE.MediaManipulation
       }
       else
         throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
+
+      return outputPath;
+    }
+
+    public string Reverse(string filePath)
+    {
+      OnChangeStep?.Invoke("Reversing File");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Reversed{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+
+      MediaType fileMediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
+      if (fileMediaType == MediaType.AUDIO)
+      {
+        AudioManipulator audioManipulator = new AudioManipulator();
+        audioManipulator.OnProgress += ProgressUpdate;
+        audioManipulator.ReverseAudio(outputPath, filePath);
+        audioManipulator.OnProgress -= ProgressUpdate;
+
+      }
+      else if (fileMediaType == MediaType.VIDEO || System.IO.Path.GetExtension(filePath).ToLower() == ".gif")
+      {
+        VideoManipulator videoManipulator = new VideoManipulator();
+        videoManipulator.OnProgress += ProgressUpdate;
+        videoManipulator.ReverseVideo(outputPath, filePath);
+        videoManipulator.OnProgress -= ProgressUpdate;
+      }
+      else
+        throw new NotSupportedException($"Media type not supported for reversing.");
 
       return outputPath;
     }

@@ -55,77 +55,75 @@ namespace IVAE.MediaManipulation
       modelKeyPoints = new VectorOfKeyPoint();
       observedKeyPoints = new VectorOfKeyPoint();
 
-      using (UMat uModelImage = modelImage.ToUMat(AccessType.Read))
-      using (UMat uObservedImage = observedImage.ToUMat(AccessType.Read))
+
+      Feature2D detector;
+      Feature2D descriptor;
+      DistanceType distanceType;
+      if (matchingTechnique == MatchingTechnique.FAST)
       {
-        Feature2D detector;
-        Feature2D descriptor;
-        DistanceType distanceType;
-        if (matchingTechnique == MatchingTechnique.FAST)
-        {
-          if (detectorParameter <= 0)
-            detectorParameter = 50;
+        if (detectorParameter <= 0)
+          detectorParameter = 20;
 
-          detector = new FastDetector((int)detectorParameter);
-          descriptor = new BriefDescriptorExtractor();
-          //descriptor = new Freak();
-          distanceType = DistanceType.Hamming;
-        }
-        else if (matchingTechnique == MatchingTechnique.ORB)
-        {
-          if (detectorParameter <= 0)
-            detectorParameter = 100000;
+        detector = new FastDetector((int)detectorParameter);
+        descriptor = new BriefDescriptorExtractor();
+        distanceType = DistanceType.Hamming;
+      }
+      else if (matchingTechnique == MatchingTechnique.ORB)
+      {
+        if (detectorParameter <= 0)
+          detectorParameter = 100000;
 
-          detector = new ORBDetector((int)detectorParameter);
-          descriptor = detector;
-          distanceType = DistanceType.Hamming;
-        }
-        else if (matchingTechnique == MatchingTechnique.SURF)
-        {
-          if (detectorParameter <= 0)
-            detectorParameter = 300;
+        detector = new ORBDetector((int)detectorParameter);
+        descriptor = detector;
+        distanceType = DistanceType.Hamming;
+      }
+      else if (matchingTechnique == MatchingTechnique.SURF)
+      {
+        if (detectorParameter <= 0)
+          detectorParameter = 300;
 
-          detector = new SURF(detectorParameter);
-          descriptor = detector;
-          distanceType = DistanceType.L2;
-        }
-        else
-          throw new NotImplementedException($"{matchingTechnique} not supported.");
+        detector = new SURF(detectorParameter);
+        descriptor = detector;
+        distanceType = DistanceType.L2;
+      }
+      else
+        throw new NotImplementedException($"{matchingTechnique} not supported.");
 
-        // Extract features from model image.
-        UMat modelDescriptors = new UMat();
-        detector.DetectRaw(uModelImage, modelKeyPoints, null);
-        if (keyPointFilter < 2)
-          modelKeyPoints = GetBestKeypointsPercent(modelKeyPoints, keyPointFilter);
-        else
-          modelKeyPoints = GetBestKeypointsCount(modelKeyPoints, (int)keyPointFilter);
-        descriptor.Compute(uModelImage, modelKeyPoints, modelDescriptors);
+      // Extract features from model image.
+      UMat modelDescriptors = new UMat();
+      detector.DetectRaw(modelImage, modelKeyPoints, null);
+      Console.WriteLine($"modelKeyPoints: {modelKeyPoints.Size}");
+      if (keyPointFilter < 2)
+        modelKeyPoints = GetBestKeypointsPercent(modelKeyPoints, keyPointFilter);
+      else
+        modelKeyPoints = GetBestKeypointsCount(modelKeyPoints, (int)keyPointFilter);
+      descriptor.Compute(modelImage, modelKeyPoints, modelDescriptors);
 
-        // Extract features from observed image.
-        UMat observedDescriptors = new UMat();
-        detector.DetectRaw(uObservedImage, observedKeyPoints, null);
-        if (keyPointFilter < 2)
-          observedKeyPoints = GetBestKeypointsPercent(observedKeyPoints, keyPointFilter);
-        else
-          observedKeyPoints = GetBestKeypointsCount(observedKeyPoints, (int)keyPointFilter);
-        descriptor.Compute(uObservedImage, observedKeyPoints, observedDescriptors);
+      // Extract features from observed image.
+      UMat observedDescriptors = new UMat();
+      detector.DetectRaw(observedImage, observedKeyPoints, null);
+      Console.WriteLine($"observedKeyPoints: {observedKeyPoints.Size}");
+      if (keyPointFilter < 2)
+        observedKeyPoints = GetBestKeypointsPercent(observedKeyPoints, keyPointFilter);
+      else
+        observedKeyPoints = GetBestKeypointsCount(observedKeyPoints, (int)keyPointFilter);
+      descriptor.Compute(observedImage, observedKeyPoints, observedDescriptors);
 
-        // Match keypoints.
-        BFMatcher matcher = new BFMatcher(distanceType);
-        matcher.Add(modelDescriptors);
-        matcher.KnnMatch(observedDescriptors, matches, k, null);
+      // Match keypoints.
+      BFMatcher matcher = new BFMatcher(distanceType);
+      matcher.Add(modelDescriptors);
+      matcher.KnnMatch(observedDescriptors, matches, k, null);
 
-        mask = new Mat(matches.Size, 1, DepthType.Cv8U, 1);
-        mask.SetTo(new MCvScalar(255));
-        Features2DToolbox.VoteForUniqueness(matches, uniquenessThreshold, mask);
+      mask = new Mat(matches.Size, 1, DepthType.Cv8U, 1);
+      mask.SetTo(new MCvScalar(255));
+      Features2DToolbox.VoteForUniqueness(matches, uniquenessThreshold, mask);
 
-        int nonZeroCount = CvInvoke.CountNonZero(mask);
+      int nonZeroCount = CvInvoke.CountNonZero(mask);
+      if (nonZeroCount >= 4)
+      {
+        nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, matches, mask, 1.5, 20);
         if (nonZeroCount >= 4)
-        {
-          nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, matches, mask, 1.5, 20);
-          if (nonZeroCount >= 4)
-            homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, matches, mask, 2);
-        }
+          homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, matches, mask, 2);
       }
     }
 
@@ -143,7 +141,7 @@ namespace IVAE.MediaManipulation
       using (VectorOfVectorOfDMatch matches = new VectorOfVectorOfDMatch())
       {
         Mat mask;
-        FindMatches(modelImage, observedImage, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography, MatchingTechnique.FAST, 1000);
+        FindMatches(modelImage, observedImage, out modelKeyPoints, out observedKeyPoints, matches, out mask, out homography, MatchingTechnique.FAST, 0.25f);
 
         var maskMatrix = new Matrix<byte>(mask.Rows, mask.Cols);
         mask.CopyTo(maskMatrix);

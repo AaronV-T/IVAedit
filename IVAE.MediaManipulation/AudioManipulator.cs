@@ -128,6 +128,28 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
+    public void ReverseAudio(string outputPath, string audioPath)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(audioPath))
+        throw new ArgumentNullException(nameof(audioPath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{audioPath}\" -af areverse \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     private void DurationMessageReceived(double duration)
     {
       currentFileDurationInMS = duration;

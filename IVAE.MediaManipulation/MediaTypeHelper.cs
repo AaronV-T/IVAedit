@@ -10,7 +10,7 @@ namespace IVAE.MediaManipulation
 
   public static class MediaTypeHelper
   {
-    public static IReadOnlyCollection<string> AudioExtensions = new HashSet<string> { ".mp3", ".ogg", ".wav", ".wma" };
+    public static IReadOnlyCollection<string> AudioExtensions = new HashSet<string> { ".aac", ".mp3", ".ogg", ".wav", ".wma" };
     public static IReadOnlyCollection<string> ImageExtensions = new HashSet<string> { ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff" };
     public static IReadOnlyCollection<string> VideoExtensions = new HashSet<string> { ".avi", ".gifv", ".mp4", ".webm", ".wmv" };
 

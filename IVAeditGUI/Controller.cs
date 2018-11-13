@@ -26,7 +26,9 @@ namespace IVAeditGUI
       this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
       this.mainWindow.OnExtractAudioButtonClick += ExtractAudio;
       this.mainWindow.OnNormalizeVolumeButtonClick += NormalizeVolume;
+      this.mainWindow.OnRemoveAudioButtonClick += RemoveAudio;
       this.mainWindow.OnResizeButtonClick += Resize;
+      this.mainWindow.OnReverseButtonClick += Reverse;
       this.mainWindow.OnStabilizeVideoButtonClick += StabilizeVideo;
       this.mainWindow.OnStitchImagesButtonClick += StitchImages;
       this.mainWindow.OnTestButtonClick += Test;
@@ -673,6 +675,42 @@ namespace IVAeditGUI
       }
     }
 
+    public async void RemoveAudio()
+    {
+      try
+      {
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select video file.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.RemoveAudioFromVideo(openFileDialog.FileName);
+        });
+
+        mainWindow.SetMessage($"Audioless video file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
     public async void Resize()
     {
       try
@@ -715,6 +753,42 @@ namespace IVAeditGUI
         });
 
         mainWindow.SetMessage($"Resized file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        System.Diagnostics.Process.Start(outputPath);
+      }
+      catch (Exception ex)
+      {
+        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
+        Console.WriteLine(ex);
+      }
+    }
+
+    public async void Reverse()
+    {
+      try
+      {
+        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+        openFileDialog.Filter = $"Audio, Video, or GIF File|*.gif;{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+        openFileDialog.Title = "Select Video or Audio File.";
+        openFileDialog.Multiselect = false;
+
+        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        {
+          mainWindow.SetMessage("Canceled.");
+          return;
+        }
+
+        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+        taskHandler.OnChangeStep += ChangeCurrentStep;
+        taskHandler.OnProgressUpdate += ProgressUpdate;
+
+        DateTime start = DateTime.Now;
+        string outputPath = null;
+        await Task.Factory.StartNew(() =>
+        {
+          outputPath = taskHandler.Reverse(openFileDialog.FileName);
+        });
+
+        mainWindow.SetMessage($"Reversed file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
         System.Diagnostics.Process.Start(outputPath);
       }
       catch (Exception ex)

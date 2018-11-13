@@ -236,6 +236,28 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
+    public void RemoveAudioFromVideo(string outputPath, string videoPath)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -an -codec:v copy \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     public void ResizeVideo(string outputPath, string videoPath, int width, int height)
     {
       if (width <= 0 && height <= 0)
@@ -247,6 +269,32 @@ namespace IVAE.MediaManipulation
         height = -2;
 
       ResizeVideoHelper(outputPath, videoPath, width.ToString(), height.ToString());
+    }
+
+    public void ReverseVideo(string outputPath, string videoPath)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      string audioArg = string.Empty;
+      if (MediaFileInfo.FileHasAudio(videoPath))
+        audioArg = "-af areverse ";
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf reverse {audioArg}\"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
     public void ScaleVideo(string outputPath, string videoPath, float scaleFactor)
@@ -290,14 +338,20 @@ namespace IVAE.MediaManipulation
         System.IO.File.Delete(outputPath);
       
       string startArg = string.Empty;
+      string modifierArg = string.Empty;
       if (!string.IsNullOrEmpty(startTime))
+      {
         startArg = $"-ss {startTime} ";
+        modifierArg = "-async 1 ";
+      }
+      else
+        modifierArg = "-codec copy ";
 
       string endArg = string.Empty;
       if (!string.IsNullOrEmpty(endTime))
         endArg = $"-to {endTime} ";
 
-      string args = $"-i \"{filePath}\" {startArg}{endArg}-async 1 \"{outputPath}\"";
+      string args = $"-i \"{filePath}\" {startArg}{endArg}{modifierArg} \"{outputPath}\"";
 
       FFmpegProcessRunner fpr = new FFmpegProcessRunner();
       fpr.Run(args);

@@ -59,7 +59,9 @@
 
     <Button x:Name="btnCombineVideos" Content="Combine Videos" HorizontalAlignment="Center" Margin="-310,270,0,0" VerticalAlignment="Top" Width="100" Click="btnCombineVideos_Click"/>
     <Button x:Name="btnExtractAudio" Content="Extract Audio" HorizontalAlignment="Center" Margin="-105,270,0,0" VerticalAlignment="Top" Width="100" Click="btnExtractAudio_Click"/>
-    <Button x:Name="btnStabilizeVideo" Content="Stabilize Video" HorizontalAlignment="Center" Margin="105,270,0,0" VerticalAlignment="Top" Width="100" Click="btnStabilizeVideo_Click"/>
+    <Button x:Name="btnRemoveAudio" Content="Remove Audio" HorizontalAlignment="Center" Margin="105,270,0,0" VerticalAlignment="Top" Width="100" Click="btnRemoveAudio_Click"/>
+    <Button x:Name="btnReverse" Content="Reverse" HorizontalAlignment="Center" Margin="310,270,0,0" VerticalAlignment="Top" Width="100" Click="btnReverse_Click"/>
+    <Button x:Name="btnStabilizeVideo" Content="Stabilize Video" HorizontalAlignment="Center" Margin="515,270,0,0" VerticalAlignment="Top" Width="100" Click="btnStabilizeVideo_Click"/>
 
     <Button x:Name="btnAdjustSpeed" Content="Adjust Speed" HorizontalAlignment="Center" Margin="-310,295,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustSpeed_Click"/>
     <Button x:Name="btnAdjustVolume" Content="Adjust Volume" HorizontalAlignment="Center" Margin="-105,295,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustVolume_Click"/>

@@ -107,7 +107,7 @@ namespace IVAE.UnitTests
     [TestMethod]
     public void ExtractAudioFromVideoTest()
     {
-      string inputFilepath = $"{TestMediaDirectory}twwraw.mp4";
+      string inputFilepath = $"{TestMediaDirectory}twwbattlesraw.mp4";
       string outputFilepathWithoutExtension = $"{TestMediaDirectory}output";
       VideoManipulator videoManipulator = new VideoManipulator();
       MediaFileInfo inputMFI = new MediaFileInfo(inputFilepath);
@@ -115,6 +115,20 @@ namespace IVAE.UnitTests
       MediaFileInfo outputMFI = new MediaFileInfo(videoManipulator.ExtractAudioFromVideo(outputFilepathWithoutExtension, inputFilepath));
       Assert.IsTrue(outputMFI.HasAudio);
       Assert.IsFalse(outputMFI.HasVideo);
+    }
+
+    [TestMethod]
+    public void RemoveAudioFromVideoTest()
+    {
+      string inputFilepath = $"{TestMediaDirectory}twwbattlesraw.mp4";
+      string outputFilepath = $"{TestMediaDirectory}output.mp4";
+      VideoManipulator videoManipulator = new VideoManipulator();
+      MediaFileInfo inputMFI = new MediaFileInfo(inputFilepath);
+
+      videoManipulator.RemoveAudioFromVideo(outputFilepath, inputFilepath);
+      MediaFileInfo outputMFI = new MediaFileInfo(outputFilepath);
+      Assert.IsFalse(outputMFI.HasAudio);
+      Assert.IsTrue(outputMFI.HasVideo);
     }
 
     [TestMethod]
