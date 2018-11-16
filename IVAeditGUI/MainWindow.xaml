@@ -5,69 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:IVAeditGUI"
         mc:Ignorable="d"
-        Title="MainWindow" Height="400" Width="700">
-    <Grid>
-    <ComboBox x:Name="cbMethodPicker" HorizontalAlignment="Center" Margin="0,5,0,0" VerticalAlignment="Top" Width="120"/>
-
-    <Label Content="X Coordinate" HorizontalAlignment="Center" Margin="-480,25,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Y Coordinate" HorizontalAlignment="Center" Margin="-320,25,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Width" HorizontalAlignment="Center" Margin="-160,25,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Height" HorizontalAlignment="Center" Margin="0,25,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Frame Delay" HorizontalAlignment="Center" Margin="160,25,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Final Delay" HorizontalAlignment="Center" Margin="320,25,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Loops" HorizontalAlignment="Center" Margin="480,25,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <TextBox x:Name="tbxXCoordinate" HorizontalAlignment="Center" Height="25" Margin="-480,50,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxYCoordinate" HorizontalAlignment="Center" Height="25" Margin="-320,50,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxWidth" HorizontalAlignment="Center" Height="25" Margin="-160,50,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxHeight" HorizontalAlignment="Center" Height="25" Margin="0,50,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxFrameDelay" HorizontalAlignment="Center" Height="25" Margin="160,50,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxFinalDelay" HorizontalAlignment="Center" Height="25" Margin="320,50,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxLoops" HorizontalAlignment="Center" Height="25" Margin="480,50,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-
-    <CheckBox x:Name="checkboxWriteFileNames" Content="Write File Names" HorizontalAlignment="Center" Margin="-500,105,0,0" VerticalAlignment="Top" Width="110"/>
-    <Label Content="Font Size" HorizontalAlignment="Center" Margin="-300,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Gifs Per Line" HorizontalAlignment="Center" Margin="-140,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <CheckBox x:Name="checkboxAlignImages" Content="Align Images" HorizontalAlignment="Center" Margin="60,90,0,0" VerticalAlignment="Top" Width="110"/>
-    <Label Content="Start Time" HorizontalAlignment="Center" Margin="260,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="End Time" HorizontalAlignment="Center" Margin="420,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Volume" HorizontalAlignment="Center" Margin="580,80,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <TextBox x:Name="tbxFontSize" HorizontalAlignment="Center" Height="25" Margin="-300,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxGifsPerLine" HorizontalAlignment="Center" Height="25" Margin="-140,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <ComboBox x:Name="cbImageAlignmentType" HorizontalAlignment="Center" Margin="60,105,0,0" VerticalAlignment="Top" Width="110"/>
-    <TextBox x:Name="tbxStartTime" HorizontalAlignment="Center" Height="25" Margin="260,105,0,0" TextWrapping="Wrap" Text="00:00:00" VerticalAlignment="Top" Width="60"/>
-    <TextBox x:Name="tbxEndTime" HorizontalAlignment="Center" Height="25" Margin="420,105,0,0" TextWrapping="Wrap" Text="00:00:00" VerticalAlignment="Top" Width="60"/>
-    <TextBox x:Name="tbxVolume" HorizontalAlignment="Center" Height="25" Margin="580,105,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-
-    <Label Content="FPS" HorizontalAlignment="Center" Margin="0,135,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <Label Content="Modifier" HorizontalAlignment="Center" Margin="160,135,0,0" VerticalAlignment="Top" Width="80" Height="25" HorizontalContentAlignment="Center"/>
-    <TextBox x:Name="tbxFPS" HorizontalAlignment="Center" Height="25" Margin="0,160,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-    <TextBox x:Name="tbxModifier" HorizontalAlignment="Center" Height="25" Margin="160,160,0,0" TextWrapping="Wrap" Text="0" VerticalAlignment="Top" Width="50"/>
-
-    <TextBlock x:Name="tblckMessage" Text="" HorizontalAlignment="Center" Margin="0,190,0,0" VerticalAlignment="Top" Width="650" Height="25" TextWrapping="Wrap" TextAlignment="Center"/>
-
-    <Button x:Name="btnTest" Content="Test" HorizontalAlignment="Center" Margin="-515,220,0,0" VerticalAlignment="Top" Width="100" Click="btnTest_Click"/>
-    <Button x:Name="btnImagesToGif" Content="Images to Gif" HorizontalAlignment="Center" Margin="-310,220,0,0" VerticalAlignment="Top" Width="100" Click="btnImagesToGif_Click"/>
-    <Button x:Name="btnCombineGifs" Content="Combine Gifs" HorizontalAlignment="Center" Margin="-105,220,0,0" VerticalAlignment="Top" Width="100" Click="btnCombineGifs_Click"/>
-    <Button x:Name="btnAlignImage" Content="Align Image" HorizontalAlignment="Center" Margin="105,220,0,0" VerticalAlignment="Top" Width="100" Click="btnAlignImage_Click"/>
-    <Button x:Name="btnStitchImages" Content="Stitch Images" HorizontalAlignment="Center" Margin="310,220,0,0" VerticalAlignment="Top" Width="100" Click="btnStitchImages_Click"/>
-    <Button x:Name="btnDrawMatches" Content="Draw Matches" HorizontalAlignment="Center" Margin="515,220,0,0" VerticalAlignment="Top" Width="100" Click="btnDrawMatches_Click"/>
-
-    <Button x:Name="btnCrop" Content="Crop" HorizontalAlignment="Center" Margin="-515,245,0,0" VerticalAlignment="Top" Width="100" Click="btnCrop_Click"/>
-    <Button x:Name="btnGifToVideo" Content="Gif to Video" HorizontalAlignment="Center" Margin="-105,245,0,0" VerticalAlignment="Top" Width="100" Click="btnGifToVideo_Click"/>
-    <Button x:Name="btnResize" Content="Resize" HorizontalAlignment="Center" Margin="105,245,0,0" VerticalAlignment="Top" Width="100" Click="btnResize_Click"/>
-    <Button x:Name="btnVideoToImages" Content="Video to Images" HorizontalAlignment="Center" Margin="515,245,0,0" VerticalAlignment="Top" Width="100" Click="btnVideoToImages_Click"/>
-
-    <Button x:Name="btnCombineVideos" Content="Combine Videos" HorizontalAlignment="Center" Margin="-310,270,0,0" VerticalAlignment="Top" Width="100" Click="btnCombineVideos_Click"/>
-    <Button x:Name="btnExtractAudio" Content="Extract Audio" HorizontalAlignment="Center" Margin="-105,270,0,0" VerticalAlignment="Top" Width="100" Click="btnExtractAudio_Click"/>
-    <Button x:Name="btnRemoveAudio" Content="Remove Audio" HorizontalAlignment="Center" Margin="105,270,0,0" VerticalAlignment="Top" Width="100" Click="btnRemoveAudio_Click"/>
-    <Button x:Name="btnReverse" Content="Reverse" HorizontalAlignment="Center" Margin="310,270,0,0" VerticalAlignment="Top" Width="100" Click="btnReverse_Click"/>
-    <Button x:Name="btnStabilizeVideo" Content="Stabilize Video" HorizontalAlignment="Center" Margin="515,270,0,0" VerticalAlignment="Top" Width="100" Click="btnStabilizeVideo_Click"/>
-
-    <Button x:Name="btnAdjustSpeed" Content="Adjust Speed" HorizontalAlignment="Center" Margin="-310,295,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustSpeed_Click"/>
-    <Button x:Name="btnAdjustVolume" Content="Adjust Volume" HorizontalAlignment="Center" Margin="-105,295,0,0" VerticalAlignment="Top" Width="100" Click="btnAdjustVolume_Click"/>
-    <Button x:Name="btnNormalizeVolume" Content="Normalize Volume" HorizontalAlignment="Center" Margin="105,295,0,0" VerticalAlignment="Top" Width="100" Click="btnNormalizeVolume_Click"/>
-    <Button x:Name="btnTrim" Content="Trim" HorizontalAlignment="Center" Margin="310,295,0,0" VerticalAlignment="Top" Width="100" Click="btnTrim_Click"/>
-
-    <Button x:Name="btnTwwToMp4" Content="TWW To MP4" HorizontalAlignment="Center" Margin="0,320,0,0" VerticalAlignment="Top" Width="100" Click="btnTwwToMp4_Click"/>
+        Title="MainWindow" Height="400" Width="900">
+  <Grid>
+    <ComboBox x:Name="cbOperationSelector" HorizontalAlignment="Center" Margin="0,5,0,0" VerticalAlignment="Top" Width="120" SelectionChanged="cbOperationSelector_SelectionChanged"/>
+    <Grid x:Name="gridInputs" VerticalAlignment="Top" Margin="0,30,0,0" Height="100"></Grid>
+    <TextBlock x:Name="tblckMessage" Text="" HorizontalAlignment="Center" Margin="0,130,0,0" VerticalAlignment="Top" Width="650" Height="25" TextWrapping="Wrap" TextAlignment="Center"/>
+    <Button x:Name="btnRun" Content="Run" HorizontalAlignment="Center" Margin="-105,160,0,0" VerticalAlignment="Top" Width="100" Click="btnRun_Click"/>
+    <Button x:Name="btnStop" Content="Stop" HorizontalAlignment="Center" Margin="105,160,0,0" VerticalAlignment="Top" Width="100" Click="btnStop_Click" IsEnabled="False"/>
   </Grid>
 </Window>

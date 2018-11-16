@@ -22,7 +22,7 @@ namespace IVAeditGUI
         string line;
         while ((line = sr.ReadLine()) != null)
         {
-          string[] splitLine = line.Split();
+          string[] splitLine = line.Split('=');
 
           if (splitLine.Length < 2)
             continue;
@@ -35,9 +35,37 @@ namespace IVAeditGUI
       return settings;
     }
 
+    public static Dictionary<string, string> LoadSettingsWithPrefix(string prefix)
+    {
+      if (string.IsNullOrWhiteSpace(prefix))
+        throw new ArgumentNullException(nameof(prefix));
+
+      Dictionary<string, string> settings = new Dictionary<string, string>();
+
+      if (!System.IO.File.Exists(settingsFilePath))
+        return settings;
+
+      using (System.IO.StreamReader sr = new System.IO.StreamReader(settingsFilePath))
+      {
+        string line;
+        while ((line = sr.ReadLine()) != null)
+        {
+          string[] splitLine = line.Split('=');
+
+          if (splitLine.Length < 2)
+            continue;
+
+          if (splitLine[0].IndexOf(prefix) == 0)
+            settings.Add(splitLine[0], line.Substring(splitLine[0].Length + 1));
+        }
+      }
+
+      return settings;
+    }
+
     public static void SaveSettings(Dictionary<string,string> settings)
     {
-      List<string> lines = new List<string>(); ;
+      List<string> lines = new List<string>();
 
       // Update settings that are already in the settings file.
       if (System.IO.File.Exists(settingsFilePath))
@@ -46,7 +74,7 @@ namespace IVAeditGUI
 
         for (int i = 0; i < lines.Count; i++)
         {
-          string[] splitLine = lines[i].Split();
+          string[] splitLine = lines[i].Split('=');
 
           if (splitLine.Length < 2)
             continue;
@@ -54,7 +82,7 @@ namespace IVAeditGUI
           string settingName = splitLine[0];
           if (settings.ContainsKey(settingName))
           {
-            lines[i] = $"{settingName} {settings[settingName]}";
+            lines[i] = $"{settingName}={settings[settingName]}";
             settings.Remove(settingName);
           }
         }
@@ -62,7 +90,7 @@ namespace IVAeditGUI
 
       // Add any settings that aren't already in the settings file.
       foreach (var kvp in settings)
-        lines.Add($"{kvp.Key} {kvp.Value}");
+        lines.Add($"{kvp.Key}={kvp.Value}");
 
       System.IO.File.WriteAllLines(settingsFilePath, lines.ToArray());
     }

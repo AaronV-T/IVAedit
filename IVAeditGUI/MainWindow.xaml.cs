@@ -21,32 +21,17 @@ namespace IVAeditGUI
   public partial class MainWindow : Window
   {
     public event Action
-      OnAdjustSpeedButtonClick, 
-      OnAdjustVolumeButtonClick,
-      OnAlignImageButtonClick,
-      OnCombineGifsButtonClick,
-      OnCombineVideosButtonClick,
-      OnCropButtonClick,
-      OnDrawMatchesButtonClick,
-      OnExtractAudioButtonClick,
-      OnImagesToGifButtonClick,
-      OnGifToVideoButtonClick,
-      OnNormalizeVolumeButtonClick,
-      OnRemoveAudioButtonClick,
-      OnResizeButtonClick,
-      OnReverseButtonClick,
-      OnStabilizeVideoButtonClick,
-      OnStitchImagesButtonClick,
-      OnTestButtonClick,
-      OnTrimButtonClick,
-      OnTwwToMp4ButtonClick,
-      OnVideoToImagesButtonClick;
+      OnOperationSelectorSelectionChanged,
+      OnRunButtonClick,
+      OnStopButtonClick;
 
     public MainWindow()
     {
       InitializeComponent();
 
       new Controller(this);
+
+      Title = $"IVAedit GUI v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}";
     }
 
     public void SetMessage(string text)
@@ -61,104 +46,19 @@ namespace IVAeditGUI
       }
     }
 
-    private void btnAdjustSpeed_Click(object sender, RoutedEventArgs e)
+    private void btnRun_Click(object sender, RoutedEventArgs e)
     {
-      OnAdjustSpeedButtonClick?.Invoke();
+      OnRunButtonClick?.Invoke();
     }
 
-    private void btnAdjustVolume_Click(object sender, RoutedEventArgs e)
+    private void cbOperationSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-      OnAdjustVolumeButtonClick?.Invoke();
+      OnOperationSelectorSelectionChanged?.Invoke();
     }
 
-    private void btnAlignImage_Click(object sender, RoutedEventArgs e)
+    private void btnStop_Click(object sender, RoutedEventArgs e)
     {
-      OnAlignImageButtonClick?.Invoke();
-    }
-
-    private void btnCombineGifs_Click(object sender, RoutedEventArgs e)
-    {
-      OnCombineGifsButtonClick?.Invoke();
-    }
-
-    private void btnCombineVideos_Click(object sender, RoutedEventArgs e)
-    {
-      OnCombineVideosButtonClick?.Invoke();
-    }
-
-    private void btnCrop_Click(object sender, RoutedEventArgs e)
-    {
-      OnCropButtonClick?.Invoke();
-    }
-
-    private void btnDrawMatches_Click(object sender, RoutedEventArgs e)
-    {
-      OnDrawMatchesButtonClick?.Invoke();
-    }
-
-    private void btnExtractAudio_Click(object sender, RoutedEventArgs e)
-    {
-      OnExtractAudioButtonClick?.Invoke();
-    }
-
-    private void btnImagesToGif_Click(object sender, RoutedEventArgs e)
-    {
-      OnImagesToGifButtonClick?.Invoke();
-    }
-
-    private void btnGifToVideo_Click(object sender, RoutedEventArgs e)
-    {
-      OnGifToVideoButtonClick?.Invoke();
-    }
-
-    private void btnNormalizeVolume_Click(object sender, RoutedEventArgs e)
-    {
-      OnNormalizeVolumeButtonClick?.Invoke();
-    }
-
-    private void btnRemoveAudio_Click(object sender, RoutedEventArgs e)
-    {
-      OnRemoveAudioButtonClick?.Invoke();
-    }
-
-    private void btnResize_Click(object sender, RoutedEventArgs e)
-    {
-      OnResizeButtonClick?.Invoke();
-    }
-
-    private void btnReverse_Click(object sender, RoutedEventArgs e)
-    {
-      OnReverseButtonClick?.Invoke();
-    }
-
-    private void btnStabilizeVideo_Click(object sender, RoutedEventArgs e)
-    {
-      OnStabilizeVideoButtonClick?.Invoke();
-    }
-
-    private void btnStitchImages_Click(object sender, RoutedEventArgs e)
-    {
-      OnStitchImagesButtonClick?.Invoke();
-    }
-
-    private void btnTest_Click(object sender, RoutedEventArgs e)
-    {
-      OnTestButtonClick?.Invoke();
-    }
-
-    private void btnTrim_Click(object sender, RoutedEventArgs e)
-    {
-      OnTrimButtonClick?.Invoke();
-    }
-
-    private void btnTwwToMp4_Click(object sender, RoutedEventArgs e)
-    {
-      OnTwwToMp4ButtonClick?.Invoke();
-    }
-
-    private void btnVideoToImages_Click(object sender, RoutedEventArgs e)
-    {
-      OnVideoToImagesButtonClick?.Invoke();
+      OnStopButtonClick?.Invoke();
     }
   }
 }

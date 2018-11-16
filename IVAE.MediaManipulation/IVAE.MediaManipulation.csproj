@@ -120,7 +120,29 @@
   </Target>
   <Import Project="..\packages\EmguCV.3.1.0.1\build\EmguCV.targets" Condition="Exists('..\packages\EmguCV.3.1.0.1\build\EmguCV.targets')" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy /S /Y /I "$(ProjectDir)tessdata" "$(TargetDir)tessdata"</PostBuildEvent>
+    <PostBuildEvent>:: Copy Tesseract training data.
+xcopy /S /Y /I "$(ProjectDir)tessdata" "$(TargetDir)tessdata"
+
+:: Delete excess ZedGraph directories.
+RD /S /Q "$(TargetDir)de\"
+RD /S /Q "$(TargetDir)es\"
+RD /S /Q "$(TargetDir)fr\"
+RD /S /Q "$(TargetDir)hu\"
+RD /S /Q "$(TargetDir)it\"
+RD /S /Q "$(TargetDir)ja\"
+RD /S /Q "$(TargetDir)pt\"
+RD /S /Q "$(TargetDir)ru\"
+RD /S /Q "$(TargetDir)sk\"
+RD /S /Q "$(TargetDir)sv\"
+RD /S /Q "$(TargetDir)tr\"
+RD /S /Q "$(TargetDir)zh-cn\"
+RD /S /Q "$(TargetDir)zh-tw\"
+
+:: Remove 32 bit files.
+RD /S /Q "$(TargetDir)x86\"
+
+:: Remove excessively large files.
+del "$(TargetDir)OpenTK.xml"</PostBuildEvent>
   </PropertyGroup>
   <Import Project="..\packages\leptonica.net.1.75.0.4\build\leptonica.net.targets" Condition="Exists('..\packages\leptonica.net.1.75.0.4\build\leptonica.net.targets')" />
   <Import Project="..\packages\tesseract.net.4.0.0.16\build\tesseract.net.targets" Condition="Exists('..\packages\tesseract.net.4.0.0.16\build\tesseract.net.targets')" />

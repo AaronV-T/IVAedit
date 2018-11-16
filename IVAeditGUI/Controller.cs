@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace IVAeditGUI
 {
@@ -11,72 +13,231 @@ namespace IVAeditGUI
     private string CurrentStep { get; set; }
     private MainWindow mainWindow;
 
+    private Dictionary<string, OperationSetupInfo> operationSetups;
+
     public Controller(MainWindow mainWindow)
     {
       this.mainWindow = mainWindow;
 
-      this.mainWindow.OnAdjustVolumeButtonClick += AdjustVolume;
-      this.mainWindow.OnAlignImageButtonClick += AlignImage;
-      this.mainWindow.OnAdjustSpeedButtonClick += AdjustSpeed;
-      this.mainWindow.OnCombineGifsButtonClick += CombineGifs;
-      this.mainWindow.OnCombineVideosButtonClick += CombineVideos;
-      this.mainWindow.OnCropButtonClick += Crop;
-      this.mainWindow.OnDrawMatchesButtonClick += DrawMatches;
-      this.mainWindow.OnGifToVideoButtonClick += ConvertGifToVideo;
-      this.mainWindow.OnImagesToGifButtonClick += ConvertImagesToGif;
-      this.mainWindow.OnExtractAudioButtonClick += ExtractAudio;
-      this.mainWindow.OnNormalizeVolumeButtonClick += NormalizeVolume;
-      this.mainWindow.OnRemoveAudioButtonClick += RemoveAudio;
-      this.mainWindow.OnResizeButtonClick += Resize;
-      this.mainWindow.OnReverseButtonClick += Reverse;
-      this.mainWindow.OnStabilizeVideoButtonClick += StabilizeVideo;
-      this.mainWindow.OnStitchImagesButtonClick += StitchImages;
-      this.mainWindow.OnTestButtonClick += Test;
-      this.mainWindow.OnTrimButtonClick += Trim;
-      this.mainWindow.OnTwwToMp4ButtonClick += TwwToMp4;
-      this.mainWindow.OnVideoToImagesButtonClick += ConvertVideoToImages;
+      this.mainWindow.OnOperationSelectorSelectionChanged += OperationSelectionChanged;
+      this.mainWindow.OnRunButtonClick += Run;
+
+      operationSetups = new Dictionary<string, OperationSetupInfo>()
+      {
+        {
+          "Adjust Speed",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "FPS", new InputSetupInfo(ControlType.TextBox) },
+              { "Speed", new InputSetupInfo(ControlType.TextBox) }
+            },
+            AdjustSpeed
+          )
+        },
+        {
+          "Adjust Volume",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Volume", new InputSetupInfo(ControlType.TextBox) }
+            },
+            AdjustVolume
+          )
+        },
+        {
+          "Align Image",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              {
+                "Align Mode", new InputSetupInfo
+                (
+                  ControlType.ComboBox,
+                  ((IVAE.MediaManipulation.ImageAlignmentType[])Enum.GetValues(typeof(IVAE.MediaManipulation.ImageAlignmentType))).Select(item => item.ToString()).ToList()
+                )
+              }
+            },
+            AlignImage
+          )
+        },
+        {
+          "Combine Gifs",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Gifs Per Line", new InputSetupInfo(ControlType.TextBox) }
+            },
+            CombineGifs
+          )
+        },
+        {
+          "Combine Videos",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Horizontal", new InputSetupInfo(ControlType.CheckBox) }
+            },
+            CombineVideos
+          )
+        },
+        {
+          "Crop",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "X Coordinate", new InputSetupInfo(ControlType.TextBox) },
+              { "Y Coordinate", new InputSetupInfo(ControlType.TextBox) },
+              { "Width", new InputSetupInfo(ControlType.TextBox) },
+              { "Height", new InputSetupInfo(ControlType.TextBox) }
+            },
+            Crop
+          )
+        },
+        {
+          "Draw Matches",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              {
+                "Align Mode", new InputSetupInfo
+                (
+                  ControlType.ComboBox,
+                  ((IVAE.MediaManipulation.ImageAlignmentType[])Enum.GetValues(typeof(IVAE.MediaManipulation.ImageAlignmentType))).Select(item => item.ToString()).ToList()
+                )
+              }
+            },
+            DrawMatches
+          )
+        },
+        {
+          "Extract Audio",
+          new OperationSetupInfo(null, ExtractAudio)
+        },
+        {
+          "Images To Gif",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "X Coordinate", new InputSetupInfo(ControlType.TextBox) },
+              { "Y Coordinate", new InputSetupInfo(ControlType.TextBox) },
+              { "Width", new InputSetupInfo(ControlType.TextBox) },
+              { "Height", new InputSetupInfo(ControlType.TextBox) },
+              { "Frame Delay", new InputSetupInfo(ControlType.TextBox) },
+              { "Final Delay", new InputSetupInfo(ControlType.TextBox) },
+              { "Loops", new InputSetupInfo(ControlType.TextBox) },
+              { "Write Names", new InputSetupInfo(ControlType.CheckBox)},
+              { "Font Size", new InputSetupInfo(ControlType.TextBox) },
+              { "Align Images", new InputSetupInfo(ControlType.CheckBox) },
+              {
+                "Align Mode", new InputSetupInfo
+                (
+                  ControlType.ComboBox,
+                  ((IVAE.MediaManipulation.ImageAlignmentType[])Enum.GetValues(typeof(IVAE.MediaManipulation.ImageAlignmentType))).Select(item => item.ToString()).ToList()
+                )
+              }
+            },
+            ImagesToGif
+          )
+        },
+        {
+          "Gif To Video",
+          new OperationSetupInfo(null, GifToVideo)
+        },
+        {
+          "Normalize Volume",
+          new OperationSetupInfo(null, NormalizeVolume)
+        },
+        {
+          "Remove Audio",
+          new OperationSetupInfo(null, RemoveAudio)
+        },
+        {
+          "Resize",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Width", new InputSetupInfo(ControlType.TextBox) },
+              { "Height", new InputSetupInfo(ControlType.TextBox) },
+              { "Scale Factor", new InputSetupInfo(ControlType.TextBox) }
+            },
+            Resize
+          )
+        },
+        {
+          "Reverse",
+          new OperationSetupInfo(null, Reverse)
+        },
+        {
+          "Stabilize Video",
+          new OperationSetupInfo(null, StabilizeVideo)
+        },
+        {
+          "Stitch Images",
+          new OperationSetupInfo(null, StitchImages)
+        },
+        {
+          "Test",
+          new OperationSetupInfo(null, Test)
+        },
+        {
+          "Trim",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Start Time", new InputSetupInfo(ControlType.TextBox) },
+              { "End Time", new InputSetupInfo(ControlType.TextBox) }
+            },
+            Trim
+          )
+        },
+        {
+          "TWW To MP4",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Main X", new InputSetupInfo(ControlType.TextBox) },
+              { "Main Y", new InputSetupInfo(ControlType.TextBox) },
+              { "Main Width", new InputSetupInfo(ControlType.TextBox) },
+              { "Main Height", new InputSetupInfo(ControlType.TextBox) }
+            },
+            TwwToMp4
+          )
+        },
+        {
+          "Video To Images",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "FPS", new InputSetupInfo(ControlType.TextBox) }
+            },
+            VideoToImages
+          )
+        }
+      };
 
       try
       {
-        foreach (IVAE.MediaManipulation.ImageAlignmentType type in (IVAE.MediaManipulation.ImageAlignmentType[])Enum.GetValues(typeof(IVAE.MediaManipulation.ImageAlignmentType)))
-          this.mainWindow.cbImageAlignmentType.Items.Add(type.ToString());
-        this.mainWindow.cbImageAlignmentType.SelectedIndex = 0;
+        foreach (var kvp in operationSetups)
+          this.mainWindow.cbOperationSelector.Items.Add(kvp.Key);
 
-        Dictionary<string, string> settings = SettingsIO.LoadSettings();
-        if (settings.ContainsKey("XCoordinate"))
-          mainWindow.tbxXCoordinate.Text = settings["XCoordinate"];
-        if (settings.ContainsKey("YCoordinate"))
-          mainWindow.tbxYCoordinate.Text = settings["YCoordinate"];
-        if (settings.ContainsKey("Width"))
-          mainWindow.tbxWidth.Text = settings["Width"];
-        if (settings.ContainsKey("Height"))
-          mainWindow.tbxHeight.Text = settings["Height"];
-        if (settings.ContainsKey("FrameDelay"))
-          mainWindow.tbxFrameDelay.Text = settings["FrameDelay"];
-        if (settings.ContainsKey("FinalDelay"))
-          mainWindow.tbxFinalDelay.Text = settings["FinalDelay"];
-        if (settings.ContainsKey("Loops"))
-          mainWindow.tbxLoops.Text = settings["Loops"];
-        if (settings.ContainsKey("WriteFileNames"))
-          mainWindow.checkboxWriteFileNames.IsChecked = Convert.ToBoolean(settings["WriteFileNames"]);
-        if (settings.ContainsKey("FontSize"))
-          mainWindow.tbxFontSize.Text = settings["FontSize"];
-        if (settings.ContainsKey("GifsPerLine"))
-          mainWindow.tbxGifsPerLine.Text = settings["GifsPerLine"];
-        if (settings.ContainsKey("AlignImages"))
-          mainWindow.checkboxAlignImages.IsChecked = Convert.ToBoolean(settings["AlignImages"]);
-        if (settings.ContainsKey("ImageAlignmentType"))
-          mainWindow.cbImageAlignmentType.SelectedValue = settings["ImageAlignmentType"];
-        if (settings.ContainsKey("StartTime"))
-          mainWindow.tbxStartTime.Text = settings["StartTime"];
-        if (settings.ContainsKey("EndTime"))
-          mainWindow.tbxEndTime.Text = settings["EndTime"];
-        if (settings.ContainsKey("Volume"))
-          mainWindow.tbxVolume.Text = settings["Volume"];
-        if (settings.ContainsKey("FPS"))
-          mainWindow.tbxFPS.Text = settings["FPS"];
-        if (settings.ContainsKey("Modifier"))
-          mainWindow.tbxModifier.Text = settings["Modifier"];
+        Dictionary<string, string> settings = SettingsIO.LoadSettings(new List<string> { "SelectedOperation" });
+        if (settings.ContainsKey("SelectedOperation"))
+          this.mainWindow.cbOperationSelector.SelectedValue = settings["SelectedOperation"];
+        else
+          this.mainWindow.cbOperationSelector.SelectedIndex = 0;
       }
       catch (Exception ex)
       {
@@ -85,45 +246,159 @@ namespace IVAeditGUI
       }
     }
 
-    public async void AdjustSpeed()
+    #region GUI Event Handlers
+    public void OperationSelectionChanged()
     {
       try
       {
-        float fps = 0, playbackRate = 0;
-        if (mainWindow.tbxFPS.Text != string.Empty && !float.TryParse(mainWindow.tbxFPS.Text, out fps))
-          throw new ArgumentException("FPS is not a valid number.");
-        if (!float.TryParse(mainWindow.tbxModifier.Text, out playbackRate))
-          throw new ArgumentException("Modifier (playback rate) is not a valid number.");
-
+        // Get and save selected operation.
+        string selectedOperation = mainWindow.cbOperationSelector.SelectedItem as string;
         SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "FPS", fps.ToString() },
-          { "Modifier", playbackRate.ToString() }
+          { "SelectedOperation", selectedOperation }
         });
 
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select Video or Audio File.";
-        openFileDialog.Multiselect = false;
+        // Remove UI input controls.
+        this.mainWindow.gridInputs.Children.Clear();
 
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
+        if (!operationSetups.ContainsKey(selectedOperation))
+          throw new Exception($"The selected operation '{selectedOperation}' does not have setup information.");
+
+        if (operationSetups[selectedOperation] == null || operationSetups[selectedOperation].InputInfo == null || operationSetups[selectedOperation].InputInfo.Count == 0)
           return;
-        }
 
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
+        // Create UI input controls.
+        Dictionary<string, string> savedOperationInputs = SettingsIO.LoadSettingsWithPrefix($"{selectedOperation.Replace(" ", string.Empty)}_");
+        float midPoint = (operationSetups[selectedOperation].InputInfo.Count - 1) / (float)2;
+        int count = 0;
+        foreach (var kvp in operationSetups[selectedOperation].InputInfo)
         {
-          outputPath = taskHandler.AdjustAudioOrVideoPlaybackSpeed(openFileDialog.FileName, playbackRate, fps);
-        });
+          string inputSettingName = GetInputSettingName(selectedOperation, kvp.Key);
+          string savedInputValue = string.Empty;
+          if (savedOperationInputs.ContainsKey(inputSettingName))
+            savedInputValue = savedOperationInputs[inputSettingName];
 
-        mainWindow.SetMessage($"File with adjusted speed created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+          Thickness gridMargin = new Thickness(160 * (count - midPoint), 0, 0, 0);
+
+          Grid inputGrid = new Grid
+          {
+            Margin = gridMargin,
+            Name = $"inputGrid{inputSettingName}",
+            Width = 80,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top
+          };
+          mainWindow.gridInputs.Children.Add(inputGrid);
+
+          if (kvp.Value.ControlType == ControlType.CheckBox)
+          {
+            inputGrid.Children.Add(new Label
+            {
+              Content = kvp.Key,
+              Margin = new Thickness(0, 0, 0, 0),
+              Height = 30,
+              Width = 80,
+              HorizontalAlignment = HorizontalAlignment.Center,
+              VerticalAlignment = VerticalAlignment.Top,
+              HorizontalContentAlignment = HorizontalAlignment.Center
+            });
+
+            bool isChecked = string.IsNullOrWhiteSpace(savedInputValue) ? false : Convert.ToBoolean(savedInputValue);
+            CheckBox valueChbx = new CheckBox {
+              IsChecked = isChecked,
+              Margin = new Thickness(0, 30, 0, 0),
+              Height = 25,
+              HorizontalAlignment = HorizontalAlignment.Center,
+              VerticalAlignment = VerticalAlignment.Top
+            };
+
+            valueChbx.Click += (obj, args) => 
+            {
+              SettingsIO.SaveSettings(new Dictionary<string, string>
+              {
+                { inputSettingName, valueChbx.IsChecked.ToString() }
+              });
+            };
+
+            inputGrid.Children.Add(valueChbx);
+          }
+          else if (kvp.Value.ControlType == ControlType.ComboBox)
+          {
+            inputGrid.Children.Add(new Label
+            {
+              Content = kvp.Key,
+              Margin = new Thickness(0, 0, 0, 0),
+              Height = 30,
+              Width = 80,
+              HorizontalAlignment = HorizontalAlignment.Center,
+              VerticalAlignment = VerticalAlignment.Top,
+              HorizontalContentAlignment = HorizontalAlignment.Center
+            });
+
+            ComboBox valueCmbx = new ComboBox
+            {
+              Margin = new Thickness(0, 30, 0, 0),
+              Height = 25,
+              Width = 70,
+              HorizontalAlignment = HorizontalAlignment.Center,
+              VerticalAlignment = VerticalAlignment.Top
+            };
+
+            foreach (string item in (List<string>)kvp.Value.AdditionalInfo)
+              valueCmbx.Items.Add(item);
+
+            if (string.IsNullOrWhiteSpace(savedInputValue))
+              valueCmbx.SelectedIndex = 0;
+            else
+              valueCmbx.SelectedValue = savedInputValue;
+
+            valueCmbx.SelectionChanged += (obj, args) =>
+            {
+              SettingsIO.SaveSettings(new Dictionary<string, string>
+              {
+                { inputSettingName, valueCmbx.SelectedItem.ToString() }
+              });
+            };
+
+            inputGrid.Children.Add(valueCmbx);
+          }
+          else if (kvp.Value.ControlType == ControlType.TextBox)
+          {
+            inputGrid.Children.Add(new Label
+            {
+              Content = kvp.Key,
+              Margin = new Thickness(0, 0, 0, 0),
+              Height = 30,
+              Width = 80,
+              HorizontalAlignment = HorizontalAlignment.Center,
+              VerticalAlignment = VerticalAlignment.Top,
+              HorizontalContentAlignment = HorizontalAlignment.Center
+            });
+
+            TextBox valueTbx = new TextBox
+            {
+              Text = savedInputValue,
+              Margin = new Thickness(0, 30, 0, 0),
+              Height = 25,
+              Width = 50,
+              HorizontalAlignment = HorizontalAlignment.Center,
+              VerticalAlignment = VerticalAlignment.Top
+            };
+
+            valueTbx.LostFocus += (obj, args) =>
+            {
+              SettingsIO.SaveSettings(new Dictionary<string, string>
+              {
+                { inputSettingName, valueTbx.Text }
+              });
+            };
+
+            inputGrid.Children.Add(valueTbx);
+          }
+          else
+            throw new NotImplementedException($"Control type '{kvp.Value.ControlType}' not implemented.");
+
+          count++;
+        }
       }
       catch (Exception ex)
       {
@@ -132,40 +407,22 @@ namespace IVAeditGUI
       }
     }
 
-    public async void AdjustVolume()
+    public async void Run()
     {
       try
       {
-        string volume = mainWindow.tbxVolume.Text;
+        string selectedOperation = mainWindow.cbOperationSelector.SelectedItem as string;
 
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "Volume", volume }
-        });
+        if (operationSetups == null)
+          throw new Exception("OperationSetups dictionary is not initialized.");
 
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select audio or video file.";
-        openFileDialog.Multiselect = false;
+        if (!operationSetups.ContainsKey(selectedOperation))
+          throw new Exception($"The selected operation '{selectedOperation}' does not have setup information.");
 
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
+        if (operationSetups[selectedOperation].Func == null)
+          throw new Exception("The selected operation does not have an action set.");
 
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.AdjustVolume(openFileDialog.FileName, volume);
-        });
-
-        mainWindow.SetMessage($"File with ajusted volume created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        await operationSetups[selectedOperation].Func();
       }
       catch (Exception ex)
       {
@@ -173,836 +430,748 @@ namespace IVAeditGUI
         Console.WriteLine(ex);
       }
     }
+    #endregion
 
-    public async void AlignImage()
+    #region Operation Controllers
+    private async Task AdjustSpeed()
     {
-      try
+      const string OP_NAME = "Adjust Speed";
+      string fpsInputText = GetInputValue(OP_NAME, "FPS");
+      string speedModifierText = GetInputValue(OP_NAME, "Speed");
+
+      float fps = 0, speedModifier = 0;
+      if (fpsInputText != string.Empty && !float.TryParse(fpsInputText, out fps))
+        throw new ArgumentException("FPS is not a valid number.");
+      if (!float.TryParse(speedModifierText, out speedModifier))
+        throw new ArgumentException("Speed modifier is not a valid number.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Video or Audio File.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage("Aligning image.");
-
-        IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
-        if (!Enum.TryParse(mainWindow.cbImageAlignmentType.SelectedItem.ToString(), out imageAlignmentType))
-          throw new ArgumentException($"Image alignment type is not valid.");
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "ImageAlignmentType", imageAlignmentType.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
-        openFileDialog1.Title = "Select image to align.";
-        openFileDialog1.Multiselect = false;
-
-        if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog2.Filter = $"Images|{GetImageFormatsFilterString()}";
-        openFileDialog2.Title = "Select reference image.";
-        openFileDialog2.Multiselect = false;
-
-        if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.AlignImage(openFileDialog1.FileName, openFileDialog2.FileName, imageAlignmentType);
-        });
-
-        mainWindow.SetMessage($"Image aligned '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.AdjustAudioOrVideoPlaybackSpeed(openFileDialog.FileName, speedModifier, fps);
+      });
+
+      mainWindow.SetMessage($"File with adjusted speed created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void CombineGifs()
+    private async Task AdjustVolume()
     {
-      try
+      const string OP_NAME = "Adjust Volume";
+      string volumeInputText = GetInputValue(OP_NAME, "Volume");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select audio or video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage("Combining GIFs.");
-
-        int gifsPerLine = 0;
-        if (mainWindow.tbxXCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxGifsPerLine.Text, out gifsPerLine))
-          throw new ArgumentException($"Gifs per line is not a valid integer.");
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "GifsPerLine", gifsPerLine.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Gifs|*.gif";
-        openFileDialog.Title = "Select GIF files.";
-        openFileDialog.Multiselect = true;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        string newGifPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          newGifPath = taskHandler.CombineGifs(openFileDialog.FileNames, gifsPerLine);
-        });
-
-        mainWindow.SetMessage($"Gifs combined: {newGifPath}");
-
-        System.Diagnostics.Process.Start(newGifPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.AdjustVolume(openFileDialog.FileName, volumeInputText);
+      });
+
+      mainWindow.SetMessage($"File with ajusted volume created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void CombineVideos()
+    private async Task AlignImage()
     {
-      try
+      mainWindow.SetMessage("Aligning image.");
+
+      const string OP_NAME = "Align Image";
+      string alignModeInputText = GetInputValue(OP_NAME, "Align Mode");
+
+      IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
+      if (!Enum.TryParse(alignModeInputText, out imageAlignmentType))
+        throw new ArgumentException($"Image alignment type is not valid.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
+      openFileDialog1.Title = "Select image to align.";
+      openFileDialog1.Multiselect = false;
+
+      if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage("Combining Videos");
-
-        int modifier = 0;
-        if (mainWindow.tbxModifier.Text != string.Empty && !int.TryParse(mainWindow.tbxModifier.Text, out modifier))
-          throw new ArgumentException($"Modifier is not a valid integer.");
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "Modifier", modifier.ToString() }
-        });
-
-        bool combineHorizontally = modifier == 0;
-
-        System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog1.Filter = $"Videos|{GetVideoFormatsFilterString()}";
-        openFileDialog1.Title = "Select first video.";
-        openFileDialog1.Multiselect = false;
-
-        if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog2.Filter = $"Videos|{GetVideoFormatsFilterString()}";
-        openFileDialog2.Title = "Select second video.";
-        openFileDialog2.Multiselect = false;
-
-        if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.CombineVideos(openFileDialog1.FileName, openFileDialog2.FileName, combineHorizontally);
-        });
-
-        mainWindow.SetMessage($"Videos combined '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog2.Filter = $"Images|{GetImageFormatsFilterString()}";
+      openFileDialog2.Title = "Select reference image.";
+      openFileDialog2.Multiselect = false;
+
+      if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.AlignImage(openFileDialog1.FileName, openFileDialog2.FileName, imageAlignmentType);
+      });
+
+      mainWindow.SetMessage($"Image aligned '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+
+      System.Diagnostics.Process.Start(outputPath);
+
     }
 
-    public async void ConvertImagesToGif()
+    private async Task CombineGifs()
     {
-      try
+      mainWindow.SetMessage("Combining GIFs.");
+
+      const string OP_NAME = "Combine Gifs";
+      string gifsPerLineInputText = GetInputValue(OP_NAME, "Gifs Per Line");
+
+      int gifsPerLine = 0;
+      if (gifsPerLineInputText != string.Empty && !int.TryParse(gifsPerLineInputText, out gifsPerLine))
+        throw new ArgumentException($"Gifs per line is not a valid integer.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = "Gifs|*.gif";
+      openFileDialog.Title = "Select GIF files.";
+      openFileDialog.Multiselect = true;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage("Creating GIF.");
-
-        int x = 0, y = 0, width = 0, height = 0, frameDelay = 0, finalDelay = 0, loops = 0, fontSize = 0;
-        bool writeFileNames, alignImages;
-        IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
-        if (mainWindow.tbxXCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxXCoordinate.Text, out x))
-          throw new ArgumentException($"X coordinate is not a valid integer.");
-        if (mainWindow.tbxYCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxYCoordinate.Text, out y))
-          throw new ArgumentException($"Y coordinate is not a valid integer.");
-        if (mainWindow.tbxWidth.Text != string.Empty && !int.TryParse(mainWindow.tbxWidth.Text, out width))
-          throw new ArgumentException($"Width is not a valid integer.");
-        if (mainWindow.tbxHeight.Text != string.Empty && !int.TryParse(mainWindow.tbxHeight.Text, out height))
-          throw new ArgumentException($"Height is not a valid integer.");
-        if (mainWindow.tbxFrameDelay.Text != string.Empty && !int.TryParse(mainWindow.tbxFrameDelay.Text, out frameDelay))
-          throw new ArgumentException($"Frame delay is not a valid integer.");
-        if (mainWindow.tbxFinalDelay.Text != string.Empty && !int.TryParse(mainWindow.tbxFinalDelay.Text, out finalDelay))
-          throw new ArgumentException($"Final delay is not a valid integer.");
-        if (mainWindow.tbxLoops.Text != string.Empty && !int.TryParse(mainWindow.tbxLoops.Text, out loops))
-          throw new ArgumentException($"Loops is not a valid integer.");
-        writeFileNames = mainWindow.checkboxWriteFileNames.IsChecked.Value;
-        if (mainWindow.tbxFontSize.Text != string.Empty && !int.TryParse(mainWindow.tbxFontSize.Text, out fontSize))
-          throw new ArgumentException($"Font size is not a valid integer.");
-        alignImages = mainWindow.checkboxAlignImages.IsChecked.Value;
-        if (!Enum.TryParse(mainWindow.cbImageAlignmentType.SelectedItem.ToString(), out imageAlignmentType))
-          throw new ArgumentException($"Image alignment type is not valid.");
-
-        if (finalDelay == 0)
-          finalDelay = frameDelay;
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "XCoordinate", x.ToString() },
-          { "YCoordinate", y.ToString() },
-          { "Width", width.ToString() },
-          { "Height", height.ToString() },
-          { "FrameDelay", frameDelay.ToString() },
-          { "FinalDelay", finalDelay.ToString() },
-          { "Loops", loops.ToString() },
-          { "WriteFileNames", writeFileNames.ToString() },
-          { "FontSize", fontSize.ToString() },
-          { "AlignImages", alignImages.ToString() },
-          { "ImageAlignmentType", imageAlignmentType.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Images|{GetImageFormatsFilterString()}";
-        openFileDialog.Title = "Select image files.";
-        openFileDialog.Multiselect = true;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string gifPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          gifPath = taskHandler.ConvertImagesToGif(openFileDialog.FileNames, x, y, width, height, frameDelay, finalDelay, loops, fontSize, writeFileNames, alignImages, imageAlignmentType);
-        });
-
-        mainWindow.SetMessage($"Gif created '{gifPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(gifPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      string newGifPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        newGifPath = taskHandler.CombineGifs(openFileDialog.FileNames, gifsPerLine);
+      });
+
+      mainWindow.SetMessage($"Gifs combined: {newGifPath}");
+
+      System.Diagnostics.Process.Start(newGifPath);
     }
 
-    public async void ConvertGifToVideo()
+    private async Task CombineVideos()
     {
-      try
+      mainWindow.SetMessage("Combining Videos");
+
+      const string OP_NAME = "Combine Videos";
+      string combineHorizontallyInputText = GetInputValue(OP_NAME, "Horizontal");
+
+      bool combineHorizontally = Convert.ToBoolean(combineHorizontallyInputText);
+
+      System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog1.Filter = $"Videos|{GetVideoFormatsFilterString()}";
+      openFileDialog1.Title = "Select first video.";
+      openFileDialog1.Multiselect = false;
+
+      if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "GIF File|*.gif";
-        openFileDialog.Title = "Select GIF.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string gifvPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          gifvPath = taskHandler.ConvertGifToVideo(openFileDialog.FileName);
-        });
-
-        mainWindow.SetMessage($"Gifv created '{gifvPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(gifvPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog2.Filter = $"Videos|{GetVideoFormatsFilterString()}";
+      openFileDialog2.Title = "Select second video.";
+      openFileDialog2.Multiselect = false;
+
+      if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.CombineVideos(openFileDialog1.FileName, openFileDialog2.FileName, combineHorizontally);
+      });
+
+      mainWindow.SetMessage($"Videos combined '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void ConvertVideoToImages()
+    private async Task Crop()
     {
-      try
+      const string OP_NAME = "Crop";
+      string xCoordinateInputText = GetInputValue(OP_NAME, "X Coordinate");
+      string yCoordinateInputText = GetInputValue(OP_NAME, "Y Coordinate");
+      string widthInputText = GetInputValue(OP_NAME, "Width");
+      string heightInputText = GetInputValue(OP_NAME, "Height");
+
+      int x = 0, y = 0, width = 0, height = 0;
+      if (xCoordinateInputText != string.Empty && !int.TryParse(xCoordinateInputText, out x))
+        throw new ArgumentException($"X coordinate is not a valid integer.");
+      if (yCoordinateInputText != string.Empty && !int.TryParse(yCoordinateInputText, out y))
+        throw new ArgumentException($"Y coordinate is not a valid integer.");
+      if (widthInputText != string.Empty && !int.TryParse(widthInputText, out width))
+        throw new ArgumentException($"Width is not a valid integer.");
+      if (heightInputText != string.Empty && !int.TryParse(heightInputText, out height))
+        throw new ArgumentException($"Height is not a valid integer.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Image or Video File.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        string fps = mainWindow.tbxFPS.Text;
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "FPS", fps.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select video file.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputDirectory = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputDirectory = taskHandler.ConvertVideoToImages(openFileDialog.FileName, fps);
-        });
-
-        mainWindow.SetMessage($"Images created '{outputDirectory}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputDirectory);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.CropImageOrVideo(openFileDialog.FileName, x, y, width, height);
+      });
+
+      mainWindow.SetMessage($"Cropped file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void Crop()
+    private async Task DrawMatches()
     {
-      try
+      const string OP_NAME = "Draw Matches";
+      string alignModeInputText = GetInputValue(OP_NAME, "Align Mode");
+
+      IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
+      if (!Enum.TryParse(alignModeInputText, out imageAlignmentType))
+        throw new ArgumentException($"Image alignment mode is not valid.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
+      openFileDialog1.Title = "Select image 1.";
+      openFileDialog1.Multiselect = false;
+
+      if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        int x = 0, y = 0, width = 0, height = 0;
-        if (mainWindow.tbxXCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxXCoordinate.Text, out x))
-          throw new ArgumentException($"X coordinate is not a valid integer.");
-        if (mainWindow.tbxYCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxYCoordinate.Text, out y))
-          throw new ArgumentException($"Y coordinate is not a valid integer.");
-        if (mainWindow.tbxWidth.Text != string.Empty && !int.TryParse(mainWindow.tbxWidth.Text, out width))
-          throw new ArgumentException($"Width is not a valid integer.");
-        if (mainWindow.tbxHeight.Text != string.Empty && !int.TryParse(mainWindow.tbxHeight.Text, out height))
-          throw new ArgumentException($"Height is not a valid integer.");
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "XCoordinate", x.ToString() },
-          { "YCoordinate", y.ToString() },
-          { "Width", width.ToString() },
-          { "Height", height.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select Image or Video File.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.CropImageOrVideo(openFileDialog.FileName, x, y, width, height);
-        });
-
-        mainWindow.SetMessage($"Cropped file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog2.Filter = $"Images|{GetImageFormatsFilterString()}";
+      openFileDialog2.Title = "Select image 2.";
+      openFileDialog2.Multiselect = false;
+
+      if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.DrawMatches(openFileDialog1.FileName, openFileDialog2.FileName, imageAlignmentType);
+      });
+
+      mainWindow.SetMessage($"Image with matches created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void DrawMatches()
+    private async Task ExtractAudio()
     {
-      try
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
-        if (!Enum.TryParse(mainWindow.cbImageAlignmentType.SelectedItem.ToString(), out imageAlignmentType))
-          throw new ArgumentException($"Image alignment type is not valid.");
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "ImageAlignmentType", imageAlignmentType.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
-        openFileDialog1.Title = "Select image 1.";
-        openFileDialog1.Multiselect = false;
-
-        if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog2.Filter = $"Images|{GetImageFormatsFilterString()}";
-        openFileDialog2.Title = "Select image 2.";
-        openFileDialog2.Multiselect = false;
-
-        if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.DrawMatches(openFileDialog1.FileName, openFileDialog2.FileName, imageAlignmentType);
-        });
-
-        mainWindow.SetMessage($"Image with matches created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.ExtractAudioFromVideo(openFileDialog.FileName);
+      });
+
+      mainWindow.SetMessage($"Extracted audio file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void ExtractAudio()
+    private async Task ImagesToGif()
     {
-      try
+      mainWindow.SetMessage("Creating GIF.");
+
+      const string OP_NAME = "Images To Gif";
+      string xCoordinateInputText = GetInputValue(OP_NAME, "X Coordinate");
+      string yCoordinateInputText = GetInputValue(OP_NAME, "Y Coordinate");
+      string widthInputText = GetInputValue(OP_NAME, "Width");
+      string heightInputText = GetInputValue(OP_NAME, "Height");
+      string frameDelayInputText = GetInputValue(OP_NAME, "Frame Delay");
+      string finalDelayInputText = GetInputValue(OP_NAME, "Final Delay");
+      string loopsInputText = GetInputValue(OP_NAME, "Loops");
+      string writeNamesInputText = GetInputValue(OP_NAME, "Write Names");
+      string fontSizeInputText = GetInputValue(OP_NAME, "Font Size");
+      string alignImagesInputText = GetInputValue(OP_NAME, "Align Images");
+      string alignModeInputText = GetInputValue(OP_NAME, "Align Mode");
+
+      int x = 0, y = 0, width = 0, height = 0, frameDelay = 0, finalDelay = 0, loops = 0, fontSize = 0;
+      bool writeFileNames, alignImages;
+      IVAE.MediaManipulation.ImageAlignmentType imageAlignmentType;
+      if (xCoordinateInputText != string.Empty && !int.TryParse(xCoordinateInputText, out x))
+        throw new ArgumentException($"X coordinate is not a valid integer.");
+      if (yCoordinateInputText != string.Empty && !int.TryParse(yCoordinateInputText, out y))
+        throw new ArgumentException($"Y coordinate is not a valid integer.");
+      if (widthInputText != string.Empty && !int.TryParse(widthInputText, out width))
+        throw new ArgumentException($"Width is not a valid integer.");
+      if (heightInputText != string.Empty && !int.TryParse(heightInputText, out height))
+        throw new ArgumentException($"Height is not a valid integer.");
+      if (frameDelayInputText != string.Empty && !int.TryParse(frameDelayInputText, out frameDelay))
+        throw new ArgumentException($"Frame delay is not a valid integer.");
+      if (finalDelayInputText != string.Empty && !int.TryParse(finalDelayInputText, out finalDelay))
+        throw new ArgumentException($"Final delay is not a valid integer.");
+      if (loopsInputText != string.Empty && !int.TryParse(loopsInputText, out loops))
+        throw new ArgumentException($"Loops is not a valid integer.");
+      writeFileNames = Convert.ToBoolean(writeNamesInputText);
+      if (fontSizeInputText != string.Empty && !int.TryParse(fontSizeInputText, out fontSize))
+        throw new ArgumentException($"Font size is not a valid integer.");
+      alignImages = Convert.ToBoolean(alignImagesInputText);
+      if (!Enum.TryParse(alignModeInputText, out imageAlignmentType))
+        throw new ArgumentException($"Image alignment type is not valid.");
+
+      if (finalDelay == 0)
+        finalDelay = frameDelay;
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Images|{GetImageFormatsFilterString()}";
+      openFileDialog.Title = "Select image files.";
+      openFileDialog.Multiselect = true;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select video file.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.ExtractAudioFromVideo(openFileDialog.FileName);
-        });
-
-        mainWindow.SetMessage($"Extracted audio file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string gifPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        gifPath = taskHandler.ConvertImagesToGif(openFileDialog.FileNames, x, y, width, height, frameDelay, finalDelay, loops, fontSize, writeFileNames, alignImages, imageAlignmentType);
+      });
+
+      mainWindow.SetMessage($"Gif created '{gifPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(gifPath);
     }
 
-    public async void NormalizeVolume()
+    private async Task GifToVideo()
     {
-      try
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = "GIF File|*.gif";
+      openFileDialog.Title = "Select GIF.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select Video or Audio File.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.NormalizeVolume(openFileDialog.FileName);
-        });
-
-        mainWindow.SetMessage($"File with normalized audio created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string gifvPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        gifvPath = taskHandler.ConvertGifToVideo(openFileDialog.FileName);
+      });
+
+      mainWindow.SetMessage($"Gifv created '{gifvPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(gifvPath);
     }
 
-    public async void RemoveAudio()
+    private async Task NormalizeVolume()
     {
-      try
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Video or Audio File.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select video file.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.RemoveAudioFromVideo(openFileDialog.FileName);
-        });
-
-        mainWindow.SetMessage($"Audioless video file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.NormalizeVolume(openFileDialog.FileName);
+      });
+
+      mainWindow.SetMessage($"File with normalized audio created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void Resize()
+    private async Task RemoveAudio()
     {
-      try
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        int width = 0, height = 0;
-        float scaleFactor = 0;
-        if (mainWindow.tbxWidth.Text != string.Empty && !int.TryParse(mainWindow.tbxWidth.Text, out width))
-          throw new ArgumentException($"Width is not a valid integer.");
-        if (mainWindow.tbxHeight.Text != string.Empty && !int.TryParse(mainWindow.tbxHeight.Text, out height))
-          throw new ArgumentException($"Height is not a valid integer.");
-        if (mainWindow.tbxModifier.Text != string.Empty && !float.TryParse(mainWindow.tbxModifier.Text, out scaleFactor))
-          throw new ArgumentException($"ScaleFactor is not a valid number.");
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "Width", width.ToString() },
-          { "Height", height.ToString() },
-          { "Modifier", scaleFactor.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select Image or Video File.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.ResizeImageOrVideo(openFileDialog.FileName, width, height, scaleFactor);
-        });
-
-        mainWindow.SetMessage($"Resized file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.RemoveAudioFromVideo(openFileDialog.FileName);
+      });
+
+      mainWindow.SetMessage($"Audioless video file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void Reverse()
+    private async Task Resize()
     {
-      try
+      const string OP_NAME = "Resize";
+      string widthInputText = GetInputValue(OP_NAME, "Width");
+      string heightInputText = GetInputValue(OP_NAME, "Height");
+      string scaleFactorInputText = GetInputValue(OP_NAME, "Scale Factor");
+
+      int width = 0, height = 0;
+      float scaleFactor = 0;
+      if (widthInputText != string.Empty && !int.TryParse(widthInputText, out width))
+        throw new ArgumentException($"Width is not a valid integer.");
+      if (heightInputText != string.Empty && !int.TryParse(heightInputText, out height))
+        throw new ArgumentException($"Height is not a valid integer.");
+      if (scaleFactorInputText != string.Empty && !float.TryParse(scaleFactorInputText, out scaleFactor))
+        throw new ArgumentException($"Scale Factor is not a valid number.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Image or Video File.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Audio, Video, or GIF File|*.gif;{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select Video or Audio File.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.Reverse(openFileDialog.FileName);
-        });
-
-        mainWindow.SetMessage($"Reversed file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.ResizeImageOrVideo(openFileDialog.FileName, width, height, scaleFactor);
+      });
+
+      mainWindow.SetMessage($"Resized file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void StabilizeVideo()
+    private async Task Reverse()
     {
-      try
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Audio, Video, or GIF File|*.gif;{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Video or Audio File.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select Video.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.StabilizeVideo(openFileDialog.FileName);
-        });
-
-        mainWindow.SetMessage($"Stabilized video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.Reverse(openFileDialog.FileName);
+      });
+
+      mainWindow.SetMessage($"Reversed file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void StitchImages()
+    private async Task StabilizeVideo()
     {
-      try
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Video.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        mainWindow.SetMessage("Stitching images.");
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Images|{GetImageFormatsFilterString()}";
-        openFileDialog.Title = "Select image files.";
-        openFileDialog.Multiselect = true;
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.StitchImages(openFileDialog.FileNames);
-        });
-
-        mainWindow.SetMessage($"Stitched image created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.StabilizeVideo(openFileDialog.FileName);
+      });
+
+      mainWindow.SetMessage($"Stabilized video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void Test()
+    private async Task StitchImages()
     {
-      try
+      mainWindow.SetMessage("Stitching images.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Images|{GetImageFormatsFilterString()}";
+      openFileDialog.Title = "Select image files.";
+      openFileDialog.Multiselect = true;
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = "Files|*.*";
-        openFileDialog.Title = "Select files.";
-        openFileDialog.Multiselect = true;
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        DateTime start = DateTime.Now;
-        await Task.Factory.StartNew(() =>
-        {
-          taskHandler.Test(openFileDialog.FileNames);
-        });
-
-        mainWindow.SetMessage($"Finished in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.StitchImages(openFileDialog.FileNames);
+      });
+
+      mainWindow.SetMessage($"Stitched image created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
-    public async void Trim()
+    private async Task Test()
     {
-      try
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = "Files|*.*";
+      openFileDialog.Title = "Select files.";
+      openFileDialog.Multiselect = true;
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        string startTime = mainWindow.tbxStartTime.Text;
-        string endTime = mainWindow.tbxEndTime.Text;
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "StartTime", startTime },
-          { "EndTime", endTime }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select audio or video file.";
-        openFileDialog.Multiselect = false;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.TrimAudioOrVideo(openFileDialog.FileName, startTime, endTime);
-        });
-
-        mainWindow.SetMessage($"Trimmed video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      DateTime start = DateTime.Now;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        taskHandler.Test(openFileDialog.FileNames);
+      });
+
+      mainWindow.SetMessage($"Finished in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
     }
 
-    public async void TwwToMp4()
+    private async Task Trim()
     {
-      try
+      const string OP_NAME = "Trim";
+      string startTimeInputText = GetInputValue(OP_NAME, "Start Time");
+      string endTimeInputText = GetInputValue(OP_NAME, "End Time");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select audio or video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
       {
-        int x = 0, y = 0, width = 0, height = 0;
-        if (mainWindow.tbxXCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxXCoordinate.Text, out x))
-          throw new ArgumentException($"X coordinate is not a valid integer.");
-        if (mainWindow.tbxYCoordinate.Text != string.Empty && !int.TryParse(mainWindow.tbxYCoordinate.Text, out y))
-          throw new ArgumentException($"Y coordinate is not a valid integer.");
-        if (mainWindow.tbxWidth.Text != string.Empty && !int.TryParse(mainWindow.tbxWidth.Text, out width))
-          throw new ArgumentException($"Width is not a valid integer.");
-        if (mainWindow.tbxHeight.Text != string.Empty && !int.TryParse(mainWindow.tbxHeight.Text, out height))
-          throw new ArgumentException($"Height is not a valid integer.");
-
-        SettingsIO.SaveSettings(new Dictionary<string, string> {
-          { "XCoordinate", x.ToString() },
-          { "YCoordinate", y.ToString() },
-          { "Width", width.ToString() },
-          { "Height", height.ToString() }
-        });
-
-        System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-        openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
-        openFileDialog.Title = "Select Video.";
-        openFileDialog.Multiselect = false;
-
-        IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-        taskHandler.OnChangeStep += ChangeCurrentStep;
-        taskHandler.OnProgressUpdate += ProgressUpdate;
-
-        if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-        {
-          mainWindow.SetMessage("Canceled.");
-          return;
-        }
-
-        DateTime start = DateTime.Now;
-        string outputPath = null;
-        await Task.Factory.StartNew(() =>
-        {
-          outputPath = taskHandler.TwwToMp4(openFileDialog.FileName, x, y, width, height);
-        });
-
-        mainWindow.SetMessage($"TWW Timelapse '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-        System.Diagnostics.Process.Start(outputPath);
+        mainWindow.SetMessage("Canceled.");
+        return;
       }
-      catch (Exception ex)
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
       {
-        mainWindow.SetMessage($"Error: {ex.Message.Replace(Environment.NewLine, " ")}");
-        Console.WriteLine(ex);
-      }
+        outputPath = taskHandler.TrimAudioOrVideo(openFileDialog.FileName, startTimeInputText, endTimeInputText);
+      });
+
+      mainWindow.SetMessage($"Trimmed video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
 
+    private async Task TwwToMp4()
+    {
+      const string OP_NAME = "TWW To MP4";
+      string mainXInputText = GetInputValue(OP_NAME, "Main X");
+      string mainYInputText = GetInputValue(OP_NAME, "Main Y");
+      string mainWidthInputText = GetInputValue(OP_NAME, "Main Width");
+      string mainHeightInputText = GetInputValue(OP_NAME, "Main Height");
+
+      int mainX = 0, mainY = 0, mainWidth = 0, mainHeight = 0;
+      if (mainXInputText != string.Empty && !int.TryParse(mainXInputText, out mainX))
+        throw new ArgumentException($"Main X coordinate is not a valid integer.");
+      if (mainYInputText != string.Empty && !int.TryParse(mainYInputText, out mainY))
+        throw new ArgumentException($"Main Y coordinate is not a valid integer.");
+      if (mainWidthInputText != string.Empty && !int.TryParse(mainWidthInputText, out mainWidth))
+        throw new ArgumentException($"Main Width is not a valid integer.");
+      if (mainHeightInputText != string.Empty && !int.TryParse(mainHeightInputText, out mainHeight))
+        throw new ArgumentException($"Main Height is not a valid integer.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Video.";
+      openFileDialog.Multiselect = false;
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.TwwToMp4(openFileDialog.FileName, mainX, mainY, mainWidth, mainHeight);
+      });
+
+      mainWindow.SetMessage($"TWW Timelapse '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
+    private async Task VideoToImages()
+    {
+      const string OP_NAME = "Video To Images";
+      string fpsInputText = GetInputValue(OP_NAME, "FPS");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputDirectory = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputDirectory = taskHandler.ConvertVideoToImages(openFileDialog.FileName, fpsInputText);
+      });
+
+      mainWindow.SetMessage($"Images created '{outputDirectory}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputDirectory);
+
+    }
+    #endregion
+
+    #region Helpers
     private void ChangeCurrentStep(string currentStep)
     {
       CurrentStep = currentStep;
@@ -1040,5 +1209,44 @@ namespace IVAeditGUI
 
       return sb.ToString();
     }
+
+    private string GetInputSettingName(string operation, string inputName)
+    {
+      return $"{operation.Replace(" ", string.Empty)}_{inputName.Replace(" ", string.Empty)}";
+    }
+
+    private string GetInputValue(string operation, string inputName)
+    {
+      string inputSettingName = GetInputSettingName(operation, inputName);
+
+      Grid inputGrid = null;
+      for (int i = 0; i < mainWindow.gridInputs.Children.Count; i++)
+      {
+        Grid grid = mainWindow.gridInputs.Children[i] as Grid;
+
+        if (grid == null)
+          continue;
+
+        if (grid.Name == $"inputGrid{inputSettingName}")
+        {
+          inputGrid = grid;
+          break;
+        }
+      }
+
+      if (inputGrid == null)
+        throw new Exception($"Could not find input grid '{inputSettingName}'.");
+
+      ControlType inputControlType = operationSetups[operation].InputInfo[inputName].ControlType;
+      if (inputControlType == ControlType.CheckBox)
+        return ((CheckBox)inputGrid.Children[1]).IsChecked.ToString();
+      else if (inputControlType == ControlType.ComboBox)
+        return ((ComboBox)inputGrid.Children[1]).SelectedValue.ToString();
+      else if (inputControlType == ControlType.TextBox)
+        return ((TextBox)inputGrid.Children[1]).Text;
+      else
+        throw new NotImplementedException($"Unsupported control type '{operationSetups[operation].InputInfo[inputName].ToString()}'.");
+    }
+    #endregion
   }
 }
