@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IVAeditGUI", "IVAeditGUI\IV
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IVAE.UnitTests", "IVAE.UnitTests\IVAE.UnitTests.csproj", "{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IVAE.RedditBot", "IVAE.RedditBot\IVAE.RedditBot.csproj", "{FA84924A-4EF2-47B8-92E7-BAFA378EB900}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8EA207FE-2EDE-4BB6-9759-63AD9D6EFA6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA84924A-4EF2-47B8-92E7-BAFA378EB900}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA84924A-4EF2-47B8-92E7-BAFA378EB900}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA84924A-4EF2-47B8-92E7-BAFA378EB900}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA84924A-4EF2-47B8-92E7-BAFA378EB900}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
