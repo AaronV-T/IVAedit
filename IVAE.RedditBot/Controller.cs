@@ -7,8 +7,13 @@ namespace IVAE.RedditBot
 {
   public class Controller
   {
+    private const string DOWNLOAD_DIR = "AutomatedFileDownloads";
+
     public async void Start()
     {
+      if (System.IO.Directory.Exists(DOWNLOAD_DIR))
+        System.IO.Directory.Delete(DOWNLOAD_DIR, true);
+
       try
       {
         RedditClient redditClient = new RedditClient();
@@ -33,8 +38,12 @@ namespace IVAE.RedditBot
       catch (Exception ex)
       {
         Console.WriteLine(ex.ToString());
-        Console.Read();
       }
+
+      //if (System.IO.Directory.Exists(DOWNLOAD_DIR))
+        //System.IO.Directory.Delete(DOWNLOAD_DIR, true);
+
+      Console.Read();
     }
 
     private async Task<List<RedditThing>> FilterMentionMessagesAndMarkRestRead(RedditClient redditClient, List<RedditThing> unreadMessages)
@@ -79,37 +88,58 @@ namespace IVAE.RedditBot
         if (!await PostIsSafeToProcess(redditClient, parentPost))
           continue;
 
-        // Verify that the mention comment has a valid command command.
+        // Verify that the mention comment has at least one valid command.
+        List<IVAECommand> commands = IVAECommandFactory.CreateCommands(kvp.Key.Body);
+        if (commands == null || commands.Count == 0)
+        {
+          Console.WriteLine("No valid commands.");
+          continue;
+        }
 
         // Get url to media file.
         string mediaUrl = GetMediaUrlFromPost(parentPost);
         if (string.IsNullOrWhiteSpace(mediaUrl))
+        {
+          Console.WriteLine("Invalid media url.");
           continue;
+        }
 
-        // Verity that the file is not too large.
+        // Verify that the file is not too large.
         if (!TryGetMediaFileSize(mediaUrl, out long fileSize) || fileSize > 100000000)
+        {
+          Console.WriteLine("Bad media file size.");
           continue;
+        }
 
-        // Download file.
-        const string DOWNLOAD_DIR = "AutomatedFileDownloads";
+        // Ensure that the download directory exists.
         if (!System.IO.Directory.Exists(DOWNLOAD_DIR))
           System.IO.Directory.CreateDirectory(DOWNLOAD_DIR);
 
-        string downloadFilePath = $@"{DOWNLOAD_DIR}\{Guid.NewGuid()}_{mediaUrl.Substring(mediaUrl.LastIndexOf('/') + 1)}";
-        using (System.Net.WebClient client = new System.Net.WebClient())
+        string downloadFilePath = null;
+        try
         {
-          client.DownloadFile(mediaUrl, downloadFilePath);
-        }
-      }
-    }
+          // Download the media file.
+          int mediaUrlFileNameStartIndex = mediaUrl.LastIndexOf('/') + 1;
+          downloadFilePath = $@"{DOWNLOAD_DIR}\{Guid.NewGuid()}_{mediaUrl.Substring(mediaUrlFileNameStartIndex, Math.Min(mediaUrl.Length - mediaUrlFileNameStartIndex, 20))}";
+          using (System.Net.WebClient client = new System.Net.WebClient())
+          {
+            client.DownloadFile(mediaUrl, downloadFilePath);
+          }
 
-    private bool TryGetMediaFileSize(string url, out long fileSize)
-    {
-      System.Net.WebRequest request = System.Net.WebRequest.Create(url);
-      request.Method = "HEAD";
-      using (System.Net.WebResponse response = request.GetResponse())
-      {
-        return long.TryParse(response.Headers.Get("Content-Length"), out fileSize);
+          foreach (IVAECommand command in commands)
+          {
+            string path = command.Execute(downloadFilePath);
+            System.IO.File.Delete(downloadFilePath);
+            System.IO.File.Move(path, downloadFilePath);
+          }
+        }
+        catch(Exception)
+        {
+          if (!string.IsNullOrWhiteSpace(downloadFilePath) && System.IO.File.Exists(downloadFilePath))
+            System.IO.File.Delete(downloadFilePath);
+
+          throw;
+        }
       }
     }
 
@@ -152,7 +182,17 @@ namespace IVAE.RedditBot
         return !post.Over18.Value;
       }
       else
-        throw new ArgumentException($"Given post '{post}' is not a valid kind.");
+        throw new ArgumentException($"Given post '{post.Name}' is not a valid kind '{post.Kind}'.");
+    }
+
+    private bool TryGetMediaFileSize(string url, out long fileSize)
+    {
+      System.Net.WebRequest request = System.Net.WebRequest.Create(url);
+      request.Method = "HEAD";
+      using (System.Net.WebResponse response = request.GetResponse())
+      {
+        return long.TryParse(response.Headers.Get("Content-Length"), out fileSize);
+      }
     }
   }
 }

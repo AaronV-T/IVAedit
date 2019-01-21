@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controller.cs" />
+    <Compile Include="IVAECommand.cs" />
     <Compile Include="OAuthTokenInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -61,6 +62,12 @@
     <Content Include="oauthsec.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\IVAE.MediaManipulation\IVAE.MediaManipulation.csproj">
+      <Project>{ff38b233-1568-426c-8d6e-4c75f0ea47ba}</Project>
+      <Name>IVAE.MediaManipulation</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
