@@ -76,6 +76,9 @@ namespace IVAE.RedditBot
     [JsonProperty("collapsed_reason")]
     public object CollapsedReason { get; set; }
 
+    [JsonProperty("comment_karma")]
+    public int? CommentKarma { get; set; }
+
     [JsonProperty("content_categories")]
     public object ContentCategories { get; set; }
 
@@ -133,6 +136,9 @@ namespace IVAE.RedditBot
     [JsonProperty("is_crosspostable")]
     public bool? IsCrosspostable { get; set; }
 
+    [JsonProperty("is_employee")]
+    public bool? IsEmployee { get; set; }
+
     [JsonProperty("is_meta")]
     public bool? IsMeta { get; set; }
 
@@ -182,6 +188,9 @@ namespace IVAE.RedditBot
 
     [JsonProperty("link_id")]
     public string LinkId { get; set; }
+
+    [JsonProperty("link_karma")]
+    public int? LinkKarma { get; set; }
 
     [JsonProperty("locked")]
     public bool? Locked { get; set; }

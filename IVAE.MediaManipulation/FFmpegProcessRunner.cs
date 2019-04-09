@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,20 +13,20 @@ namespace IVAE.MediaManipulation
 
     public string Run(string arguments)
     {
-      System.Diagnostics.ProcessStartInfo processStartInfo = new System.Diagnostics.ProcessStartInfo("ffmpeg.exe", arguments);
+      ProcessStartInfo processStartInfo = new ProcessStartInfo("ffmpeg.exe", arguments);
       processStartInfo.RedirectStandardError = true;
       processStartInfo.RedirectStandardOutput = true;
       processStartInfo.UseShellExecute = false;
       processStartInfo.CreateNoWindow = true;
 
-      using (System.Diagnostics.Process process = new System.Diagnostics.Process())
+      using (Process process = new Process())
       {
         process.StartInfo = processStartInfo;
 
         StringBuilder sb = new StringBuilder();
         process.EnableRaisingEvents = true;
-        process.OutputDataReceived += (s, e) => { Console.WriteLine($"o: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
-        process.ErrorDataReceived += (s, e) => { Console.WriteLine($"e: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
+        process.OutputDataReceived += (s, e) => { Debug.WriteLine($"o: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
+        process.ErrorDataReceived += (s, e) => { Debug.WriteLine($"e: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
 
         process.Start();
         process.BeginErrorReadLine();

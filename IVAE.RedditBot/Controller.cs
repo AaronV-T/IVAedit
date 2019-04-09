@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -70,7 +71,7 @@ namespace IVAE.RedditBot
     {
       Dictionary<RedditThing, RedditThing> messagesWithParents = new Dictionary<RedditThing, RedditThing>();
       foreach (RedditThing message in comments)
-        messagesWithParents.Add(message, await redditClient.GetThingInfo(message.Subreddit, message.ParentId));
+        messagesWithParents.Add(message, await redditClient.GetInfoOfCommentOrLink(message.Subreddit, message.ParentId));
 
       return messagesWithParents;
     }
@@ -79,66 +80,91 @@ namespace IVAE.RedditBot
     {
       foreach(var kvp in commentsWithParents)
       {
-        RedditThing mentionComment = kvp.Key;
-        RedditThing parentPost = kvp.Value;
-
-        //await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
-
-        // Verify that the post is safe to process.
-        if (!await PostIsSafeToProcess(redditClient, parentPost))
-          continue;
-
-        // Verify that the mention comment has at least one valid command.
-        List<IVAECommand> commands = IVAECommandFactory.CreateCommands(kvp.Key.Body);
-        if (commands == null || commands.Count == 0)
-        {
-          Console.WriteLine("No valid commands.");
-          continue;
-        }
-
-        // Get url to media file.
-        string mediaUrl = GetMediaUrlFromPost(parentPost);
-        if (string.IsNullOrWhiteSpace(mediaUrl))
-        {
-          Console.WriteLine("Invalid media url.");
-          continue;
-        }
-
-        // Verify that the file is not too large.
-        if (!TryGetMediaFileSize(mediaUrl, out long fileSize) || fileSize > 100000000)
-        {
-          Console.WriteLine("Bad media file size.");
-          continue;
-        }
-
-        // Ensure that the download directory exists.
-        if (!System.IO.Directory.Exists(DOWNLOAD_DIR))
-          System.IO.Directory.CreateDirectory(DOWNLOAD_DIR);
-
-        string downloadFilePath = null;
         try
         {
-          // Download the media file.
-          int mediaUrlFileNameStartIndex = mediaUrl.LastIndexOf('/') + 1;
-          downloadFilePath = $@"{DOWNLOAD_DIR}\{Guid.NewGuid()}_{mediaUrl.Substring(mediaUrlFileNameStartIndex, Math.Min(mediaUrl.Length - mediaUrlFileNameStartIndex, 20))}";
-          using (System.Net.WebClient client = new System.Net.WebClient())
+          RedditThing mentionComment = kvp.Key;
+          RedditThing parentPost = kvp.Value;
+
+          // Verify that the post is old enough.
+          if (parentPost.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Now.AddMinutes(-30))
           {
-            client.DownloadFile(mediaUrl, downloadFilePath);
+            Console.WriteLine($"Temporarily skipping {mentionComment.Name}: Post is too recent. ({mentionComment.Author}: '{mentionComment.Body}')");
+            continue;
           }
 
-          foreach (IVAECommand command in commands)
+          //await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
+
+          // Verify that the post is safe to process.
+          if (!await PostIsSafeToProcess(redditClient, parentPost, true))
           {
-            string path = command.Execute(downloadFilePath);
-            System.IO.File.Delete(downloadFilePath);
-            System.IO.File.Move(path, downloadFilePath);
+            Console.WriteLine($"Skipping {mentionComment.Name}: Post is not safe to process. ({mentionComment.Author}: '{mentionComment.Body}')");
+            continue;
+          }
+
+          // Get the commands from the mention comment.
+          List<IVAECommand> commands = IVAECommandFactory.CreateCommands(mentionComment.Body);
+          if (commands == null || commands.Count == 0)
+          {
+            Console.WriteLine($"Skipping {mentionComment.Name}: No valid commands. ({mentionComment.Author}: '{mentionComment.Body}')");
+            continue;
+          }
+          else if (commands.Any(command => commands.Count(cmd => cmd.GetType() == command.GetType()) > 1)) // This is O(n^2), consider something more efficient.
+          {
+            Console.WriteLine($"Skipping {mentionComment.Name}: Multiple commands of same type. ({mentionComment.Author}: '{mentionComment.Body}')");
+            continue;
+          }
+
+          // Get url to media file.
+          string mediaUrl = GetMediaUrlFromPost(parentPost);
+          if (string.IsNullOrWhiteSpace(mediaUrl))
+          {
+            Console.WriteLine($"Skipping {mentionComment.Name}: Invalid media url. ({mentionComment.Author}: '{mentionComment.Body}')");
+            continue;
+          }
+
+          // Verify that the file is not too large.
+          if (!TryGetMediaFileSize(mediaUrl, out long fileSize) || fileSize > 100000000)
+          {
+            Console.WriteLine($"Skipping {mentionComment.Name}: Bad media file size. ({mentionComment.Author}: '{mentionComment.Body}')");
+            continue;
+          }
+
+          // Ensure that the download directory exists.
+          if (!System.IO.Directory.Exists(DOWNLOAD_DIR))
+            System.IO.Directory.CreateDirectory(DOWNLOAD_DIR);
+
+          string downloadFilePath = null;
+          try
+          {
+            // Download the media file.
+            int mediaUrlFileNameStartIndex = mediaUrl.LastIndexOf('/') + 1;
+            downloadFilePath = $@"{DOWNLOAD_DIR}\{Guid.NewGuid()}_{mediaUrl.Substring(mediaUrlFileNameStartIndex, Math.Min(mediaUrl.Length - mediaUrlFileNameStartIndex, 20))}";
+            using (System.Net.WebClient client = new System.Net.WebClient())
+            {
+              client.DownloadFile(mediaUrl, downloadFilePath);
+            }
+
+            // Execute all commands on the media file.
+            foreach (IVAECommand command in commands)
+            {
+              string path = command.Execute(downloadFilePath);
+              System.IO.File.Delete(downloadFilePath);
+              System.IO.File.Move(path, downloadFilePath);
+            }
+
+
+          }
+          catch (Exception)
+          {
+            if (!string.IsNullOrWhiteSpace(downloadFilePath) && System.IO.File.Exists(downloadFilePath))
+              System.IO.File.Delete(downloadFilePath);
+
+            throw;
           }
         }
-        catch(Exception)
+        catch (Exception ex)
         {
-          if (!string.IsNullOrWhiteSpace(downloadFilePath) && System.IO.File.Exists(downloadFilePath))
-            System.IO.File.Delete(downloadFilePath);
-
-          throw;
+          Console.WriteLine($"Exception occurred when processing post. {ex}");
         }
       }
     }
@@ -166,20 +192,32 @@ namespace IVAE.RedditBot
         throw new ArgumentException($"Given post '{post}' is not a valid kind.");
     }
 
-    private async Task<bool> PostIsSafeToProcess(RedditClient redditClient, RedditThing post)
+    private async Task<bool> PostIsSafeToProcess(RedditClient redditClient, RedditThing post, bool isRootPost)
     {
-      // Comment
+      // If this is the post with the media file to manipulate: ...
+      if (isRootPost)
+      {
+        if (post.Score < 0) return false; // Post's score is too low.
+        if (post.Kind == "t1" && (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl"))) return false; // Comment is self-marked as NSFW/NSFL.
+
+        var user = await redditClient.GetInfoOfUser(post.Author);
+        if (user.CommentKarma == null || user.LinkKarma == null || user.CommentKarma + user.LinkKarma < 1000) return false; // Posting user's account doesn't have enough karma.
+        if (user.CreatedUtc == null || user.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Today.AddMonths(-1)) return false; // Posting user's account isn't old enough.
+      }
+
+      // If this post is a comment: ...
       if (post.Kind == "t1")
       {
-        if (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl"))
-          return false;
-
-        return await PostIsSafeToProcess(redditClient, await redditClient.GetThingInfo(post.Subreddit, post.LinkId));
+        return await PostIsSafeToProcess(redditClient, await redditClient.GetInfoOfCommentOrLink(post.Subreddit, post.LinkId), false); // Check this comment's parent post.
       }
-      // Link
+      // If this post is a link: ...
       else if (post.Kind == "t3")
       {
-        return !post.Over18.Value;
+        if (post.Over18 == null || post.Over18.Value) return false; // Link is flagged NSFW.
+        if (post.SubredditSubscribers == null || post.SubredditSubscribers < 5000) return false; // Link is in a subreddit that's too small.
+        if (post.SubredditType == null || post.SubredditType != "public") return false; // Link is in a subreddit that's not public.
+
+        return true;
       }
       else
         throw new ArgumentException($"Given post '{post.Name}' is not a valid kind '{post.Kind}'.");

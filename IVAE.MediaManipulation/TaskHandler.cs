@@ -11,6 +11,13 @@ namespace IVAE.MediaManipulation
     public event Action<string> OnChangeStep;
     public event Action<float> OnProgressUpdate;
 
+    /// <summary>
+    /// Adjusts the playback rate of a given audio or video file.
+    /// </summary>
+    /// <param name="filePath">The absolute path to the media file.</param>
+    /// <param name="newPlaybackRate"></param>
+    /// <param name="newFrameRate">If file is a video and this parameter is greater than 0 then the framerate with be set to this value.</param>
+    /// <returns>Absolute path to the media file with the adjusted playback rate.</returns>
     public string AdjustAudioOrVideoPlaybackSpeed(string filePath, float newPlaybackRate, float newFrameRate = 0)
     {
       OnChangeStep?.Invoke("Changing Playback Rate");

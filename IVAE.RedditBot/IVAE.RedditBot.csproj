@@ -46,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controller.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="IVAECommand.cs" />
     <Compile Include="OAuthTokenInfo.cs" />
     <Compile Include="Program.cs" />

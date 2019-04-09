@@ -20,24 +20,20 @@ namespace IVAE.RedditBot
 
     public RedditClient() {}
 
-    public async Task<RedditThing> GetThingInfo(string subreddit, string fullName)
+    public async Task<RedditThing> GetInfoOfCommentOrLink(string subreddit, string fullName)
     {
-      List<RedditThing> thingsInfo = await GetThingsInfo(subreddit, new List<string> { fullName });
+      List<RedditThing> infos = await GetInfoOfCommentsAndLinks(subreddit, new List<string> { fullName });
 
-      if (thingsInfo == null)
-        throw new Exception($"GetThingsInfo got null response from Reddit.");
-      if (thingsInfo.Count != 1)
-        throw new Exception($"GetThingsInfo did not get exactly 1 thing from Reddit. Count: {thingsInfo.Count}.");
+      if (infos == null || infos.Count == 0)
+        return null;
+      if (infos.Count != 1)
+        throw new Exception($"GetInfoOfCommentOrLink did not get exactly 1 thing from Reddit. Count: {infos.Count}.");
 
-      return thingsInfo[0];
+      return infos[0];
     }
 
-    public async Task<List<RedditThing>> GetThingsInfo(string subreddit, List<string> fullNames)
+    public async Task<List<RedditThing>> GetInfoOfCommentsAndLinks(string subreddit, List<string> fullNames)
     {
-      Dictionary<string, string> data = new Dictionary<string, string>();
-      data.Add("id", string.Join(",", fullNames));
-
-      HttpContent content = new FormUrlEncodedContent(data);
       await WaitUntilARequestCanBeMade();
       HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/r/{subreddit}/api/info.json?id={string.Join(",", fullNames)}");
       SetRatelimitInfo(response);
@@ -46,6 +42,24 @@ namespace IVAE.RedditBot
       //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
       return GetThingsFromResponse(responseContent);
+    }
+
+    public async Task<RedditThing> GetInfoOfUser(string username)
+    {
+      await WaitUntilARequestCanBeMade();
+      HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/user/{username}/about");
+      SetRatelimitInfo(response);
+      string responseContent = await response.Content.ReadAsStringAsync();
+
+      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+
+      List<RedditThing> things = GetThingsFromResponse(responseContent);
+      if (things == null || things.Count == 0)
+        return null;
+      if (things.Count != 1)
+        throw new Exception($"GetInfoOfUser did not get exactly 1 thing from Reddit. Count: {things.Count}.");
+
+      return things[0];
     }
 
     public async Task<List<RedditThing>> GetUnreadMessages()
@@ -149,6 +163,12 @@ namespace IVAE.RedditBot
       if (response.IsSuccessStatusCode)
       {
         Dictionary<string, string> deserializedResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent);
+
+        if (deserializedResponse.ContainsKey("error"))
+        {
+          throw new Exception($"Error getting OAuthToken from Reddit: '{deserializedResponse["error"]}'.");
+        }
+
         return new OAuthTokenInfo
         {
           AccessToken = deserializedResponse["access_token"],
@@ -165,14 +185,24 @@ namespace IVAE.RedditBot
     {
       Dictionary<string, object> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseContent);
       List<RedditThing> things = new List<RedditThing>();
-      RedditListing listing = ((JObject)deserializedResponse["data"]).ToObject<RedditListing>();
-      foreach (JObject jObj in (JArray)listing.Children)
-      {
-        Dictionary<string, object> objectDict = jObj.ToObject<Dictionary<string, object>>();
-        if (!objectDict.ContainsKey("data") || objectDict["data"] == null)
-          continue;
 
-        things.Add(((JObject)objectDict["data"]).ToObject<RedditThing>());
+      if (((JObject)deserializedResponse["data"]).ContainsKey("children"))
+      {
+        // Response data is a Listing.
+        RedditListing listing = ((JObject)deserializedResponse["data"]).ToObject<RedditListing>();
+        foreach (JObject jObj in (JArray)listing.Children)
+        {
+          Dictionary<string, object> objectDict = jObj.ToObject<Dictionary<string, object>>();
+          if (!objectDict.ContainsKey("data") || objectDict["data"] == null)
+            continue;
+
+          things.Add(((JObject)objectDict["data"]).ToObject<RedditThing>());
+        }
+      }
+      else
+      {
+        // Response data is probably a Thing.
+        things.Add(((JObject)deserializedResponse["data"]).ToObject<RedditThing>());
       }
 
       return things;
