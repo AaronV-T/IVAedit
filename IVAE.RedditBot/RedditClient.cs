@@ -13,12 +13,19 @@ namespace IVAE.RedditBot
   {
     private const string BASE_URL = "https://oauth.reddit.com";
 
+    private string clientID, encodedClientSecret, username, encodedPassword;
     private HttpClient httpClient;
     private OAuthTokenInfo oAuthTokenInfo;
     private int ratelimitRemaining = int.MaxValue;
     private DateTime ratelimitResetTime = DateTime.MinValue;
 
-    public RedditClient() {}
+    public RedditClient(string clientID, string encodedClientSecret, string username, string encodedPassword)
+    {
+      this.clientID = clientID ?? throw new ArgumentNullException(nameof(clientID));
+      this.encodedClientSecret = encodedClientSecret ?? throw new ArgumentNullException(nameof(encodedClientSecret));
+      this.username = username ?? throw new ArgumentNullException(nameof(username));
+      this.encodedPassword = encodedPassword ?? throw new ArgumentNullException(nameof(encodedPassword));
+    }
 
     public async Task<RedditThing> GetInfoOfCommentOrLink(string subreddit, string fullName)
     {
@@ -88,6 +95,27 @@ namespace IVAE.RedditBot
       //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
     }
 
+    public async Task<bool?> PostComment(string parentFullName, string text)
+    {
+      Dictionary<string, string> data = new Dictionary<string, string>();
+      data.Add("thing_id", parentFullName);
+      data.Add("text", text);
+
+      HttpContent content = new FormUrlEncodedContent(data);
+      await WaitUntilARequestCanBeMade();
+      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/comment", content);
+      SetRatelimitInfo(response);
+      string responseContent = await response.Content.ReadAsStringAsync();
+
+      Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+
+      Dictionary<string, object> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseContent);
+      if (!deserializedResponse.ContainsKey("success"))
+        return null;
+
+      return (bool)deserializedResponse["success"];
+    }
+
     public async Task<string> Test()
     {
       await WaitUntilARequestCanBeMade();
@@ -127,7 +155,10 @@ namespace IVAE.RedditBot
           throw new Exception("Rate limit reset time not correctly set.");
 
         Console.WriteLine($"Reddit rate limit hit. Waiting until {ratelimitResetTime.ToShortTimeString()}");
-        while (DateTime.Now < ratelimitResetTime) { }
+        while (DateTime.Now < ratelimitResetTime)
+        {
+          await Task.Delay(100);
+        }
       }
     }
 
@@ -142,12 +173,11 @@ namespace IVAE.RedditBot
 
     private async Task<OAuthTokenInfo> GetOAuthToken()
     {
-      string[] authLines = System.IO.File.ReadAllLines("oauthsec.txt");
       return await GetOAuthToken(
-        authLines[0],
-        Encoding.Unicode.GetString(Convert.FromBase64String(authLines[1])),
-        authLines[2],
-        Encoding.Unicode.GetString(Convert.FromBase64String(authLines[3])));
+        this.clientID,
+        Encoding.Unicode.GetString(Convert.FromBase64String(this.encodedClientSecret)),
+        this.username,
+        Encoding.Unicode.GetString(Convert.FromBase64String(this.encodedPassword)));
     }
 
     private async Task<OAuthTokenInfo> GetOAuthToken(string appId, string clientSecret, string userName, string password)
@@ -162,7 +192,7 @@ namespace IVAE.RedditBot
       string responseContent = await response.Content.ReadAsStringAsync();
       if (response.IsSuccessStatusCode)
       {
-        Dictionary<string, string> deserializedResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent);
+        Dictionary<string, string> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent);
 
         if (deserializedResponse.ContainsKey("error"))
         {

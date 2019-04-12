@@ -17,8 +17,9 @@ namespace IVAE.RedditBot
 
       try
       {
-        RedditClient redditClient = new RedditClient();
-        StringBuilder sb = new StringBuilder();
+        dynamic secrets = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(System.IO.File.ReadAllText("secrets.json"));
+        RedditClient redditClient = new RedditClient((string)secrets.RedditClient.ID, (string)secrets.RedditClient.EncodedSecret, (string)secrets.RedditBot.Username, (string)secrets.RedditBot.EncodedPassword);
+        ImgurClient imgurClient = new ImgurClient((string)secrets.ImgurClient.ID, (string)secrets.ImgurClient.EncodedSecret);
 
         Console.WriteLine("Getting unread messages...");
         List<RedditThing> messages = await redditClient.GetUnreadMessages();
@@ -30,11 +31,11 @@ namespace IVAE.RedditBot
         Dictionary<RedditThing, RedditThing> commentsWithParents = await GetParentsOfComments(redditClient, messages);
 
         Console.WriteLine($"Processing {commentsWithParents.Count} posts...");
-        await ProcessPosts(redditClient, commentsWithParents);
+        await ProcessPosts(redditClient, commentsWithParents, imgurClient);
 
-        sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(commentsWithParents, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
-        System.IO.File.WriteAllText("output.txt", sb.ToString());
-        System.Diagnostics.Process.Start("output.txt");
+        //sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(commentsWithParents, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
+        //System.IO.File.WriteAllText("output.txt", sb.ToString());
+        //System.Diagnostics.Process.Start("output.txt");
       }
       catch (Exception ex)
       {
@@ -76,7 +77,7 @@ namespace IVAE.RedditBot
       return messagesWithParents;
     }
 
-    private async Task ProcessPosts(RedditClient redditClient, Dictionary<RedditThing, RedditThing> commentsWithParents)
+    private async Task ProcessPosts(RedditClient redditClient, Dictionary<RedditThing, RedditThing> commentsWithParents, ImgurClient imgurClient)
     {
       foreach(var kvp in commentsWithParents)
       {
@@ -136,23 +137,46 @@ namespace IVAE.RedditBot
           string downloadFilePath = null;
           try
           {
+            System.Diagnostics.Stopwatch downloadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             // Download the media file.
             int mediaUrlFileNameStartIndex = mediaUrl.LastIndexOf('/') + 1;
-            downloadFilePath = $@"{DOWNLOAD_DIR}\{Guid.NewGuid()}_{mediaUrl.Substring(mediaUrlFileNameStartIndex, Math.Min(mediaUrl.Length - mediaUrlFileNameStartIndex, 20))}";
+            downloadFilePath = System.IO.Path.Combine(
+              DOWNLOAD_DIR,
+              $"{Guid.NewGuid()}_" +
+              $"{mediaUrl.Substring(mediaUrlFileNameStartIndex, Math.Min(mediaUrl.Length - mediaUrlFileNameStartIndex, 20))}" +
+              $"{System.IO.Path.GetExtension(mediaUrl)}");
             using (System.Net.WebClient client = new System.Net.WebClient())
             {
               client.DownloadFile(mediaUrl, downloadFilePath);
             }
+            downloadStopwatch.Stop();
 
             // Execute all commands on the media file.
+            System.Diagnostics.Stopwatch transformStopwatch = System.Diagnostics.Stopwatch.StartNew();
             foreach (IVAECommand command in commands)
             {
               string path = command.Execute(downloadFilePath);
               System.IO.File.Delete(downloadFilePath);
               System.IO.File.Move(path, downloadFilePath);
             }
+            transformStopwatch.Stop();
 
+            // Upload altered media file.
+            System.Diagnostics.Stopwatch uploadStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            string videoFormat = null;
+            if (System.IO.Path.GetExtension(downloadFilePath) == ".mp4")
+              videoFormat = "mp4";
+            var res = await imgurClient.Upload(System.IO.File.ReadAllBytes(downloadFilePath), videoFormat);
+            uploadStopwatch.Stop();
 
+            // Respond with link.
+            bool? commentPosted = await redditClient.PostComment(mentionComment.Name, $"{res.Link}\n\nThis is a bot in development. Downloaded in {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transfomed in {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, uploaded in {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m.");
+            Console.WriteLine($"Posted: {commentPosted != null && commentPosted.Value}");
+
+            if (commentPosted != null && commentPosted.Value)
+              await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
+            else
+              await imgurClient.Delete(res.DeleteHash);
           }
           catch (Exception)
           {
@@ -197,10 +221,13 @@ namespace IVAE.RedditBot
       // If this is the post with the media file to manipulate: ...
       if (isRootPost)
       {
-        if (post.Score < 0) return false; // Post's score is too low.
-        if (post.Kind == "t1" && (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl"))) return false; // Comment is self-marked as NSFW/NSFL.
+        if (post.Score < 1) return false; // Post's score is too low.
+        if (post.Kind == "t1") {
+          if (post.Edited == null || post.Edited.Value) return false; // Comment is edited.
+          if (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl")) return false; // Comment is self-marked as NSFW/NSFL.
+        }
 
-        var user = await redditClient.GetInfoOfUser(post.Author);
+        RedditThing user = await redditClient.GetInfoOfUser(post.Author);
         if (user.CommentKarma == null || user.LinkKarma == null || user.CommentKarma + user.LinkKarma < 1000) return false; // Posting user's account doesn't have enough karma.
         if (user.CreatedUtc == null || user.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Today.AddMonths(-1)) return false; // Posting user's account isn't old enough.
       }

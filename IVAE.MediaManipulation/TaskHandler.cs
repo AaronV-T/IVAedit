@@ -437,7 +437,7 @@ namespace IVAE.MediaManipulation
         videoManipulator.OnProgress -= ProgressUpdate;
       }
       else
-        throw new NotSupportedException($"Media type not supported for reversing.");
+        throw new NotSupportedException($"Media type of '{filePath}' not supported for reversing.");
 
       return outputPath;
     }

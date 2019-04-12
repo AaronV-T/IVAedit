@@ -331,3 +331,4 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
 IVAE.RedditBot/oauthsec.txt
+IVAE.RedditBot/secrets.json

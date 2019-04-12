@@ -110,10 +110,10 @@ namespace IVAE.RedditBot
         switch (kvp.Key.ToUpper())
         {
           case "FRAMERATE":
-            playbackRate = float.Parse(kvp.Value);
+            frameRate = float.Parse(kvp.Value);
             break;
           case "PLAYBACKRATE":
-            frameRate = float.Parse(kvp.Value);
+            playbackRate = float.Parse(kvp.Value);
             break;
         }
       }
