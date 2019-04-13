@@ -107,7 +107,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
       Dictionary<string, object> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseContent);
       if (!deserializedResponse.ContainsKey("success"))

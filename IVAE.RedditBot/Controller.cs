@@ -17,6 +17,7 @@ namespace IVAE.RedditBot
 
       try
       {
+        Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(System.IO.File.ReadAllText("settings.json"));
         dynamic secrets = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(System.IO.File.ReadAllText("secrets.json"));
         RedditClient redditClient = new RedditClient((string)secrets.RedditClient.ID, (string)secrets.RedditClient.EncodedSecret, (string)secrets.RedditBot.Username, (string)secrets.RedditBot.EncodedPassword);
         ImgurClient imgurClient = new ImgurClient((string)secrets.ImgurClient.ID, (string)secrets.ImgurClient.EncodedSecret);
@@ -31,7 +32,7 @@ namespace IVAE.RedditBot
         Dictionary<RedditThing, RedditThing> commentsWithParents = await GetParentsOfComments(redditClient, messages);
 
         Console.WriteLine($"Processing {commentsWithParents.Count} posts...");
-        await ProcessPosts(redditClient, commentsWithParents, imgurClient);
+        await ProcessPosts(settings, redditClient, imgurClient, commentsWithParents);
 
         //sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(commentsWithParents, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
         //System.IO.File.WriteAllText("output.txt", sb.ToString());
@@ -77,7 +78,7 @@ namespace IVAE.RedditBot
       return messagesWithParents;
     }
 
-    private async Task ProcessPosts(RedditClient redditClient, Dictionary<RedditThing, RedditThing> commentsWithParents, ImgurClient imgurClient)
+    private async Task ProcessPosts(Settings settings, RedditClient redditClient, ImgurClient imgurClient, Dictionary<RedditThing, RedditThing> commentsWithParents)
     {
       foreach(var kvp in commentsWithParents)
       {
@@ -86,8 +87,10 @@ namespace IVAE.RedditBot
           RedditThing mentionComment = kvp.Key;
           RedditThing parentPost = kvp.Value;
 
+          bool requestorIsWhitelisted = settings.RequestorWhitelist.Contains(mentionComment.Author);
+
           // Verify that the post is old enough.
-          if (parentPost.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Now.AddMinutes(-30))
+          if (!requestorIsWhitelisted && parentPost.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Now.ToUniversalTime().AddMinutes(-settings.FilterSettings.MinimumPostAgeInMinutes))
           {
             Console.WriteLine($"Temporarily skipping {mentionComment.Name}: Post is too recent. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
@@ -95,8 +98,15 @@ namespace IVAE.RedditBot
 
           //await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
 
+          // Verify that the requestor isn't blacklisted.
+          if (settings.RequestorBlacklist.Contains(mentionComment.Author))
+          {
+            Console.WriteLine($"Skipping {mentionComment.Name}: Requestor is blacklisted. ({mentionComment.Author}: '{mentionComment.Body}')");
+            continue;
+          }
+
           // Verify that the post is safe to process.
-          if (!await PostIsSafeToProcess(redditClient, parentPost, true))
+          if (!requestorIsWhitelisted && !await PostIsSafeToProcess(redditClient, parentPost, true, settings.FilterSettings))
           {
             Console.WriteLine($"Skipping {mentionComment.Name}: Post is not safe to process. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
@@ -124,7 +134,7 @@ namespace IVAE.RedditBot
           }
 
           // Verify that the file is not too large.
-          if (!TryGetMediaFileSize(mediaUrl, out long fileSize) || fileSize > 100000000)
+          if (!TryGetMediaFileSize(mediaUrl, out long fileSize) || fileSize > settings.FilterSettings.MaximumDownloadFileSizeInMB * 10000000)
           {
             Console.WriteLine($"Skipping {mentionComment.Name}: Bad media file size. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
@@ -134,54 +144,59 @@ namespace IVAE.RedditBot
           if (!System.IO.Directory.Exists(DOWNLOAD_DIR))
             System.IO.Directory.CreateDirectory(DOWNLOAD_DIR);
 
-          string downloadFilePath = null;
+          string mediaFilePath = null;
           try
           {
             System.Diagnostics.Stopwatch downloadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             // Download the media file.
             int mediaUrlFileNameStartIndex = mediaUrl.LastIndexOf('/') + 1;
-            downloadFilePath = System.IO.Path.Combine(
-              DOWNLOAD_DIR,
-              $"{Guid.NewGuid()}_" +
-              $"{mediaUrl.Substring(mediaUrlFileNameStartIndex, Math.Min(mediaUrl.Length - mediaUrlFileNameStartIndex, 20))}" +
-              $"{System.IO.Path.GetExtension(mediaUrl)}");
+            mediaFilePath = System.IO.Path.Combine(DOWNLOAD_DIR, $"{Guid.NewGuid()}{System.IO.Path.GetExtension(mediaUrl)}");
             using (System.Net.WebClient client = new System.Net.WebClient())
             {
-              client.DownloadFile(mediaUrl, downloadFilePath);
+              client.DownloadFile(mediaUrl, mediaFilePath);
             }
             downloadStopwatch.Stop();
 
             // Execute all commands on the media file.
+            long origFileSize = new System.IO.FileInfo(mediaFilePath).Length;
             System.Diagnostics.Stopwatch transformStopwatch = System.Diagnostics.Stopwatch.StartNew();
             foreach (IVAECommand command in commands)
             {
-              string path = command.Execute(downloadFilePath);
-              System.IO.File.Delete(downloadFilePath);
-              System.IO.File.Move(path, downloadFilePath);
+              string path = command.Execute(mediaFilePath);
+              System.IO.File.Delete(mediaFilePath);
+              mediaFilePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(mediaFilePath), $"{System.IO.Path.GetFileNameWithoutExtension(mediaFilePath)}{System.IO.Path.GetExtension(path)}");
+              System.IO.File.Move(path, mediaFilePath);
             }
             transformStopwatch.Stop();
+            long transformedFileSize = new System.IO.FileInfo(mediaFilePath).Length;
 
             // Upload altered media file.
             System.Diagnostics.Stopwatch uploadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             string videoFormat = null;
-            if (System.IO.Path.GetExtension(downloadFilePath) == ".mp4")
+            if (System.IO.Path.GetExtension(mediaFilePath) == ".mp4")
               videoFormat = "mp4";
-            var res = await imgurClient.Upload(System.IO.File.ReadAllBytes(downloadFilePath), videoFormat);
+            ImgurUploadResponse uploadResponse = await imgurClient.Upload(System.IO.File.ReadAllBytes(mediaFilePath), videoFormat);
             uploadStopwatch.Stop();
 
+            if (uploadResponse == null)
+            {
+              Console.WriteLine("Upload failed.");
+              continue;
+            }
+
             // Respond with link.
-            bool? commentPosted = await redditClient.PostComment(mentionComment.Name, $"{res.Link}\n\nThis is a bot in development. Downloaded in {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transfomed in {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, uploaded in {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m.");
+            bool? commentPosted = await redditClient.PostComment(mentionComment.Name, $"[Direct File Link]({uploadResponse.Link}) - [Post Link](https://imgur.com/{uploadResponse.Id})\n\n***\nI am a bot in development.  \nDownload: {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transform: {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, upload: {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {((double)transformedFileSize / 1000000).ToString("N2")}MB.");
             Console.WriteLine($"Posted: {commentPosted != null && commentPosted.Value}");
 
             if (commentPosted != null && commentPosted.Value)
               await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
             else
-              await imgurClient.Delete(res.DeleteHash);
+              await imgurClient.Delete(uploadResponse.DeleteHash);
           }
           catch (Exception)
           {
-            if (!string.IsNullOrWhiteSpace(downloadFilePath) && System.IO.File.Exists(downloadFilePath))
-              System.IO.File.Delete(downloadFilePath);
+            if (!string.IsNullOrWhiteSpace(mediaFilePath) && System.IO.File.Exists(mediaFilePath))
+              System.IO.File.Delete(mediaFilePath);
 
             throw;
           }
@@ -216,33 +231,33 @@ namespace IVAE.RedditBot
         throw new ArgumentException($"Given post '{post}' is not a valid kind.");
     }
 
-    private async Task<bool> PostIsSafeToProcess(RedditClient redditClient, RedditThing post, bool isRootPost)
+    private async Task<bool> PostIsSafeToProcess(RedditClient redditClient, RedditThing post, bool isRootPost, FilterSettings filterSettings)
     {
       // If this is the post with the media file to manipulate: ...
       if (isRootPost)
       {
-        if (post.Score < 1) return false; // Post's score is too low.
+        if (post.Score < filterSettings.MinimumPostScore) return false; // Post's score is too low.
         if (post.Kind == "t1") {
-          if (post.Edited == null || post.Edited.Value) return false; // Comment is edited.
-          if (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl")) return false; // Comment is self-marked as NSFW/NSFL.
+          if (!filterSettings.ProcessEditedComments && (post.Edited == null || post.Edited.Value)) return false; // Comment is edited.
+          if (!filterSettings.ProcessNSFWContent && (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl"))) return false; // Comment is self-marked as NSFW/NSFL.
         }
 
         RedditThing user = await redditClient.GetInfoOfUser(post.Author);
-        if (user.CommentKarma == null || user.LinkKarma == null || user.CommentKarma + user.LinkKarma < 1000) return false; // Posting user's account doesn't have enough karma.
-        if (user.CreatedUtc == null || user.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Today.AddMonths(-1)) return false; // Posting user's account isn't old enough.
+        if (user.CommentKarma == null || user.LinkKarma == null || user.CommentKarma + user.LinkKarma < filterSettings.MinimumPostingAccountKarma) return false; // Posting user's account doesn't have enough karma.
+        if (user.CreatedUtc == null || user.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Today.AddDays(-filterSettings.MinimumPostingAccountAgeInDays)) return false; // Posting user's account isn't old enough.
       }
 
       // If this post is a comment: ...
       if (post.Kind == "t1")
       {
-        return await PostIsSafeToProcess(redditClient, await redditClient.GetInfoOfCommentOrLink(post.Subreddit, post.LinkId), false); // Check this comment's parent post.
+        return await PostIsSafeToProcess(redditClient, await redditClient.GetInfoOfCommentOrLink(post.Subreddit, post.LinkId), false, filterSettings); // Check this comment's parent post.
       }
       // If this post is a link: ...
       else if (post.Kind == "t3")
       {
-        if (post.Over18 == null || post.Over18.Value) return false; // Link is flagged NSFW.
-        if (post.SubredditSubscribers == null || post.SubredditSubscribers < 5000) return false; // Link is in a subreddit that's too small.
-        if (post.SubredditType == null || post.SubredditType != "public") return false; // Link is in a subreddit that's not public.
+        if (!filterSettings.ProcessNSFWContent && (post.Over18 == null || post.Over18.Value)) return false; // Link is flagged NSFW.
+        if (post.SubredditSubscribers == null || post.SubredditSubscribers < filterSettings.MinimumSubredditSubscribers) return false; // Link is in a subreddit that's too small.
+        if (!filterSettings.ProcessPostsInNonPublicSubreddits && (post.SubredditType == null || post.SubredditType != "public")) return false; // Link is in a subreddit that's not public.
 
         return true;
       }

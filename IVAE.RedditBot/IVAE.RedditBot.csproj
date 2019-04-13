@@ -57,11 +57,15 @@
     <Compile Include="ImgurUploadResponse.cs" />
     <Compile Include="RedditListing.cs" />
     <Compile Include="RedditThing.cs" />
+    <Compile Include="Settings.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
     <Content Include="secrets.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="settings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

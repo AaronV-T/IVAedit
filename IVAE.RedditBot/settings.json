@@ -1,0 +1,22 @@
+{
+  "FilterSettings": {
+    "MaximumDownloadFileSizeInMB": 10,
+    "MinimumPostAgeInMinutes": 30,
+    "MinimumPostScore": 1,
+    "MinimumPostingAccountAgeInDays": 30,
+    "MinimumPostingAccountKarma": 1000,
+    "MinimumSubredditSubscribers": 5000,
+    "ProcessEditedComments": false,
+    "ProcessNSFWContent": false,
+    "ProcessPostsInNonPublicSubreddits": false
+  },
+  "RequestorWhitelist": [
+    "TheTollski"
+  ],
+  "RequestorBlacklist": [
+
+  ],
+  "SubredditBlacklist": [
+
+  ]
+}
