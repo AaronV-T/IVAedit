@@ -36,6 +36,7 @@
       <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
@@ -46,7 +47,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Controller.cs" />
+    <Compile Include="DatabaseAccessor.cs" />
+    <Compile Include="DTO\UploadLog.cs" />
+    <Compile Include="CleanupManager.cs" />
+    <Compile Include="MessageProcessor.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="IVAECommand.cs" />
     <Compile Include="OAuthTokenInfo.cs" />
@@ -54,14 +58,15 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ImgurClient.cs" />
     <Compile Include="RedditClient.cs" />
-    <Compile Include="ImgurUploadResponse.cs" />
-    <Compile Include="RedditListing.cs" />
-    <Compile Include="RedditThing.cs" />
-    <Compile Include="Settings.cs" />
+    <Compile Include="DTO\ImgurUploadResponse.cs" />
+    <Compile Include="DTO\RedditListing.cs" />
+    <Compile Include="DTO\RedditThing.cs" />
+    <Compile Include="DTO\Settings.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <EmbeddedResource Include="Resources\SQL\DBUpdate_1.sql" />
     <Content Include="secrets.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -75,5 +80,6 @@
       <Name>IVAE.MediaManipulation</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

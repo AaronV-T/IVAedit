@@ -3,36 +3,45 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using IVAE.RedditBot.DTO;
 
 namespace IVAE.RedditBot
 {
-  public class Controller
+  public class MessageProcessor
   {
     private const string DOWNLOAD_DIR = "AutomatedFileDownloads";
 
-    public async void Start()
+    private DatabaseAccessor databaseAccessor;
+    private ImgurClient imgurClient;
+    private RedditClient redditClient;
+    private Settings settings;
+
+    public MessageProcessor(DatabaseAccessor databaseAccessor, ImgurClient imgurClient, RedditClient redditClient, Settings settings)
+    {
+      this.databaseAccessor = databaseAccessor ?? throw new ArgumentNullException(nameof(databaseAccessor));
+      this.imgurClient = imgurClient ?? throw new ArgumentNullException(nameof(imgurClient));
+      this.redditClient = redditClient ?? throw new ArgumentNullException(nameof(redditClient));
+      this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+    }
+
+    public async Task ProcessUnreadMessages()
     {
       if (System.IO.Directory.Exists(DOWNLOAD_DIR))
         System.IO.Directory.Delete(DOWNLOAD_DIR, true);
 
       try
       {
-        Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(System.IO.File.ReadAllText("settings.json"));
-        dynamic secrets = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(System.IO.File.ReadAllText("secrets.json"));
-        RedditClient redditClient = new RedditClient((string)secrets.RedditClient.ID, (string)secrets.RedditClient.EncodedSecret, (string)secrets.RedditBot.Username, (string)secrets.RedditBot.EncodedPassword);
-        ImgurClient imgurClient = new ImgurClient((string)secrets.ImgurClient.ID, (string)secrets.ImgurClient.EncodedSecret);
-
         Console.WriteLine("Getting unread messages...");
         List<RedditThing> messages = await redditClient.GetUnreadMessages();
 
         Console.WriteLine("Filtering out messages that aren't comments with user mentions...");
-        List<RedditThing> comments = await FilterMentionMessagesAndMarkRestRead(redditClient, messages);
+        List<RedditThing> comments = await FilterMentionMessagesAndMarkRestRead(messages);
 
         Console.WriteLine($"Getting parents of {comments.Count} comments...");
-        Dictionary<RedditThing, RedditThing> commentsWithParents = await GetParentsOfComments(redditClient, messages);
+        Dictionary<RedditThing, RedditThing> commentsWithParents = await GetParentsOfComments( messages);
 
         Console.WriteLine($"Processing {commentsWithParents.Count} posts...");
-        await ProcessPosts(settings, redditClient, imgurClient, commentsWithParents);
+        await ProcessPosts(commentsWithParents);
 
         //sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(commentsWithParents, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
         //System.IO.File.WriteAllText("output.txt", sb.ToString());
@@ -43,13 +52,11 @@ namespace IVAE.RedditBot
         Console.WriteLine(ex.ToString());
       }
 
-      //if (System.IO.Directory.Exists(DOWNLOAD_DIR))
-        //System.IO.Directory.Delete(DOWNLOAD_DIR, true);
-
-      Console.Read();
+      if (System.IO.Directory.Exists(DOWNLOAD_DIR))
+        System.IO.Directory.Delete(DOWNLOAD_DIR, true);
     }
 
-    private async Task<List<RedditThing>> FilterMentionMessagesAndMarkRestRead(RedditClient redditClient, List<RedditThing> unreadMessages)
+    private async Task<List<RedditThing>> FilterMentionMessagesAndMarkRestRead(List<RedditThing> unreadMessages)
     {
       List<string> messagesToMarkRead = new List<string>();
       List<RedditThing> messagesToProcess = new List<RedditThing>();
@@ -69,7 +76,7 @@ namespace IVAE.RedditBot
       return messagesToProcess;
     }
 
-    private async Task<Dictionary<RedditThing, RedditThing>> GetParentsOfComments(RedditClient redditClient, List<RedditThing> comments)
+    private async Task<Dictionary<RedditThing, RedditThing>> GetParentsOfComments(List<RedditThing> comments)
     {
       Dictionary<RedditThing, RedditThing> messagesWithParents = new Dictionary<RedditThing, RedditThing>();
       foreach (RedditThing message in comments)
@@ -78,7 +85,7 @@ namespace IVAE.RedditBot
       return messagesWithParents;
     }
 
-    private async Task ProcessPosts(Settings settings, RedditClient redditClient, ImgurClient imgurClient, Dictionary<RedditThing, RedditThing> commentsWithParents)
+    private async Task ProcessPosts(Dictionary<RedditThing, RedditThing> commentsWithParents)
     {
       foreach(var kvp in commentsWithParents)
       {
@@ -106,7 +113,7 @@ namespace IVAE.RedditBot
           }
 
           // Verify that the post is safe to process.
-          if (!requestorIsWhitelisted && !await PostIsSafeToProcess(redditClient, parentPost, true, settings.FilterSettings))
+          if (!requestorIsWhitelisted && !await PostIsSafeToProcess(parentPost, true))
           {
             Console.WriteLine($"Skipping {mentionComment.Name}: Post is not safe to process. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
@@ -185,11 +192,23 @@ namespace IVAE.RedditBot
             }
 
             // Respond with link.
-            bool? commentPosted = await redditClient.PostComment(mentionComment.Name, $"[Direct File Link]({uploadResponse.Link}) - [Post Link](https://imgur.com/{uploadResponse.Id})\n\n***\nI am a bot in development.  \nDownload: {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transform: {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, upload: {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {((double)transformedFileSize / 1000000).ToString("N2")}MB.");
-            Console.WriteLine($"Posted: {commentPosted != null && commentPosted.Value}");
+            string replyCommentName = await redditClient.PostComment(mentionComment.Name, $"[Direct File Link]({uploadResponse.Link}) - [Post Link](https://imgur.com/{uploadResponse.Id})\n\n***\nI am a bot in development.  \nDownload: {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transform: {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, upload: {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {((double)transformedFileSize / 1000000).ToString("N2")}MB.");
+            Console.WriteLine($"Reply Posted: {replyCommentName != null}");
 
-            if (commentPosted != null && commentPosted.Value)
+            if (replyCommentName != null)
+            {
               await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
+
+              databaseAccessor.AddUploadLog(new UploadLog
+              {
+                DeleteKey = uploadResponse.DeleteHash,
+                PostFullname = parentPost.Name,
+                ReplyFullname = replyCommentName,
+                RequestorUsername = mentionComment.Author,
+                UploadDatetime = DateTime.UtcNow,
+                UploadDestination = "imgur"
+              });
+            }
             else
               await imgurClient.Delete(uploadResponse.DeleteHash);
           }
@@ -208,7 +227,7 @@ namespace IVAE.RedditBot
       }
     }
 
-    private string GetMediaUrlFromPost(RedditThing post)
+    private static string GetMediaUrlFromPost(RedditThing post)
     {
       // Comment
       if (post.Kind == "t1")
@@ -231,13 +250,26 @@ namespace IVAE.RedditBot
         throw new ArgumentException($"Given post '{post}' is not a valid kind.");
     }
 
-    private async Task<bool> PostIsSafeToProcess(RedditClient redditClient, RedditThing post, bool isRootPost, FilterSettings filterSettings)
+    private static bool TryGetMediaFileSize(string url, out long fileSize)
     {
+      System.Net.WebRequest request = System.Net.WebRequest.Create(url);
+      request.Method = "HEAD";
+      using (System.Net.WebResponse response = request.GetResponse())
+      {
+        return long.TryParse(response.Headers.Get("Content-Length"), out fileSize);
+      }
+    }
+
+    private async Task<bool> PostIsSafeToProcess(RedditThing post, bool isRootPost)
+    {
+      FilterSettings filterSettings = settings.FilterSettings;
+
       // If this is the post with the media file to manipulate: ...
       if (isRootPost)
       {
         if (post.Score < filterSettings.MinimumPostScore) return false; // Post's score is too low.
-        if (post.Kind == "t1") {
+        if (post.Kind == "t1")
+        {
           if (!filterSettings.ProcessEditedComments && (post.Edited == null || post.Edited.Value)) return false; // Comment is edited.
           if (!filterSettings.ProcessNSFWContent && (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl"))) return false; // Comment is self-marked as NSFW/NSFL.
         }
@@ -250,7 +282,7 @@ namespace IVAE.RedditBot
       // If this post is a comment: ...
       if (post.Kind == "t1")
       {
-        return await PostIsSafeToProcess(redditClient, await redditClient.GetInfoOfCommentOrLink(post.Subreddit, post.LinkId), false, filterSettings); // Check this comment's parent post.
+        return await PostIsSafeToProcess(await redditClient.GetInfoOfCommentOrLink(post.Subreddit, post.LinkId), false); // Check this comment's parent post.
       }
       // If this post is a link: ...
       else if (post.Kind == "t3")
@@ -263,16 +295,6 @@ namespace IVAE.RedditBot
       }
       else
         throw new ArgumentException($"Given post '{post.Name}' is not a valid kind '{post.Kind}'.");
-    }
-
-    private bool TryGetMediaFileSize(string url, out long fileSize)
-    {
-      System.Net.WebRequest request = System.Net.WebRequest.Create(url);
-      request.Method = "HEAD";
-      using (System.Net.WebResponse response = request.GetResponse())
-      {
-        return long.TryParse(response.Headers.Get("Content-Length"), out fileSize);
-      }
     }
   }
 }

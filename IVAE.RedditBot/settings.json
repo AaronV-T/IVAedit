@@ -5,7 +5,7 @@
     "MinimumPostScore": 1,
     "MinimumPostingAccountAgeInDays": 30,
     "MinimumPostingAccountKarma": 1000,
-    "MinimumSubredditSubscribers": 5000,
+    "MinimumSubredditSubscribers": 25000,
     "ProcessEditedComments": false,
     "ProcessNSFWContent": false,
     "ProcessPostsInNonPublicSubreddits": false

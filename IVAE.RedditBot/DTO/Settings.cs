@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IVAE.RedditBot
+namespace IVAE.RedditBot.DTO
 {
   public class Settings
   {

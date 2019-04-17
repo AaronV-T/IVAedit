@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using IVAE.RedditBot.DTO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -27,6 +28,22 @@ namespace IVAE.RedditBot
       this.encodedPassword = encodedPassword ?? throw new ArgumentNullException(nameof(encodedPassword));
     }
 
+    public string Username { get { return username; } }
+
+    public async Task DeletePost(string fullName)
+    {
+      Dictionary<string, string> data = new Dictionary<string, string>();
+      data.Add("id", fullName);
+
+      HttpContent content = new FormUrlEncodedContent(data);
+      await WaitUntilARequestCanBeMade();
+      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/del", content);
+      SetRatelimitInfo(response);
+      string responseContent = await response.Content.ReadAsStringAsync();
+
+      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+    }
+
     public async Task<RedditThing> GetInfoOfCommentOrLink(string subreddit, string fullName)
     {
       List<RedditThing> infos = await GetInfoOfCommentsAndLinks(subreddit, new List<string> { fullName });
@@ -47,6 +64,18 @@ namespace IVAE.RedditBot
       string responseContent = await response.Content.ReadAsStringAsync();
 
       //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+
+      return GetThingsFromResponse(responseContent);
+    }
+
+    public async Task<List<RedditThing>> GetInfoOfAllCommentsFromUser(string username)
+    {
+      await WaitUntilARequestCanBeMade();
+      HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/user/{username}/comments/.json?limit=100");
+      SetRatelimitInfo(response);
+      string responseContent = await response.Content.ReadAsStringAsync();
+
+      Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
       return GetThingsFromResponse(responseContent);
     }
@@ -95,9 +124,10 @@ namespace IVAE.RedditBot
       //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
     }
 
-    public async Task<bool?> PostComment(string parentFullName, string text)
+    public async Task<string> PostComment(string parentFullName, string text)
     {
       Dictionary<string, string> data = new Dictionary<string, string>();
+      data.Add("return_rtjson", "true");
       data.Add("thing_id", parentFullName);
       data.Add("text", text);
 
@@ -109,11 +139,11 @@ namespace IVAE.RedditBot
 
       //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
-      Dictionary<string, object> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseContent);
-      if (!deserializedResponse.ContainsKey("success"))
+      RedditThing deserializedResponse = JsonConvert.DeserializeObject<RedditThing>(responseContent);
+      if (deserializedResponse == null)
         return null;
 
-      return (bool)deserializedResponse["success"];
+      return deserializedResponse.Name;
     }
 
     public async Task<string> Test()

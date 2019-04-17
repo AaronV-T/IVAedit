@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace IVAE.RedditBot
+namespace IVAE.RedditBot.DTO
 {
   public class RedditListing
   {
