@@ -52,8 +52,8 @@ namespace IVAE.RedditBot
         Console.WriteLine(ex.ToString());
       }
 
-      if (System.IO.Directory.Exists(DOWNLOAD_DIR))
-        System.IO.Directory.Delete(DOWNLOAD_DIR, true);
+      //if (System.IO.Directory.Exists(DOWNLOAD_DIR))
+        //System.IO.Directory.Delete(DOWNLOAD_DIR, true);
     }
 
     private async Task<List<RedditThing>> FilterMentionMessagesAndMarkRestRead(List<RedditThing> unreadMessages)
@@ -120,7 +120,7 @@ namespace IVAE.RedditBot
           }
 
           // Get the commands from the mention comment.
-          List<IVAECommand> commands = IVAECommandFactory.CreateCommands(mentionComment.Body);
+          List<IVAECommand> commands = IVAECommandFactory.CreateCommands(mentionComment.Body.Split('\n')[0]);
           if (commands == null || commands.Count == 0)
           {
             Console.WriteLine($"Skipping {mentionComment.Name}: No valid commands. ({mentionComment.Author}: '{mentionComment.Body}')");
@@ -133,15 +133,15 @@ namespace IVAE.RedditBot
           }
 
           // Get url to media file.
-          string mediaUrl = GetMediaUrlFromPost(parentPost);
-          if (string.IsNullOrWhiteSpace(mediaUrl))
+          Uri mediaUrl = GetMediaUrlFromPost(parentPost);
+          if (string.IsNullOrWhiteSpace(mediaUrl.AbsoluteUri))
           {
             Console.WriteLine($"Skipping {mentionComment.Name}: Invalid media url. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
           }
 
           // Verify that the file is not too large.
-          if (!TryGetMediaFileSize(mediaUrl, out long fileSize) || fileSize > settings.FilterSettings.MaximumDownloadFileSizeInMB * 10000000)
+          if (!TryGetMediaFileSize(mediaUrl.AbsoluteUri, out long fileSize) || fileSize > settings.FilterSettings.MaximumDownloadFileSizeInMB * 10000000)
           {
             Console.WriteLine($"Skipping {mentionComment.Name}: Bad media file size. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
@@ -154,13 +154,33 @@ namespace IVAE.RedditBot
           string mediaFilePath = null;
           try
           {
-            System.Diagnostics.Stopwatch downloadStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            // Get a good file name.
+            int mediaUrlFileNameStartIndex = mediaUrl.AbsoluteUri.LastIndexOf('/') + 1;
+            string extension = System.IO.Path.GetExtension(mediaUrl.AbsoluteUri);
+            if (string.IsNullOrEmpty(extension))
+              extension = ".mp4";
+            mediaFilePath = System.IO.Path.Combine(DOWNLOAD_DIR, $"{Guid.NewGuid()}{extension}");
+
             // Download the media file.
-            int mediaUrlFileNameStartIndex = mediaUrl.LastIndexOf('/') + 1;
-            mediaFilePath = System.IO.Path.Combine(DOWNLOAD_DIR, $"{Guid.NewGuid()}{System.IO.Path.GetExtension(mediaUrl)}");
+            System.Diagnostics.Stopwatch downloadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             using (System.Net.WebClient client = new System.Net.WebClient())
             {
               client.DownloadFile(mediaUrl, mediaFilePath);
+
+              if (mediaUrl.Host == "v.redd.it")
+              {
+                try
+                {
+                  string audioUrl = $"{mediaUrl.AbsoluteUri.Substring(0, mediaUrl.AbsoluteUri.LastIndexOf("/"))}/audio";
+                  string audioFilePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(mediaFilePath), $"{System.IO.Path.GetFileNameWithoutExtension(mediaFilePath)}_audio");
+                  client.DownloadFile(audioUrl, audioFilePath);
+                  new MediaManipulation.FFmpegProcessRunner().Run($"-i {mediaFilePath} -i {audioFilePath} -acodec copy -vcodec copy combined.mp4");
+                  System.IO.File.Delete(audioFilePath);
+                  System.IO.File.Delete(mediaFilePath);
+                  System.IO.File.Move("combined.mp4", mediaFilePath);
+                }
+                catch (Exception) { }
+              }
             }
             downloadStopwatch.Stop();
 
@@ -197,10 +217,9 @@ namespace IVAE.RedditBot
 
             if (replyCommentName != null)
             {
-              await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
-
-              databaseAccessor.AddUploadLog(new UploadLog
+              databaseAccessor.SaveUploadLog(new UploadLog
               {
+                Deleted = false,
                 DeleteKey = uploadResponse.DeleteHash,
                 PostFullname = parentPost.Name,
                 ReplyFullname = replyCommentName,
@@ -214,8 +233,8 @@ namespace IVAE.RedditBot
           }
           catch (Exception)
           {
-            if (!string.IsNullOrWhiteSpace(mediaFilePath) && System.IO.File.Exists(mediaFilePath))
-              System.IO.File.Delete(mediaFilePath);
+            //if (!string.IsNullOrWhiteSpace(mediaFilePath) && System.IO.File.Exists(mediaFilePath))
+              //System.IO.File.Delete(mediaFilePath);
 
             throw;
           }
@@ -227,24 +246,49 @@ namespace IVAE.RedditBot
       }
     }
 
-    private static string GetMediaUrlFromPost(RedditThing post)
+    private static Uri GetMediaUrlFromPost(RedditThing post)
     {
       // Comment
       if (post.Kind == "t1")
       {
         // Return the first link found in the body.
         string[] splitBody = post.Body.Split();
-        foreach(string s in splitBody)
+        foreach (string s in splitBody)
         {
           if (Uri.TryCreate(s, UriKind.Absolute, out Uri uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
-            return s;
+            return new Uri(s);
         }
+
         return null;
       }
       // Link
       else if (post.Kind == "t3")
       {
-        return post.Url;
+        if (post.Media != null)
+        {
+          dynamic mediaObj = post.Media;
+          if (mediaObj.reddit_video == null)
+          {
+            Console.WriteLine($"Can't find reddit_video object in post's media object.");
+            return null;
+          }
+
+          string url = mediaObj.reddit_video.fallback_url;
+          return new Uri(url);
+        }
+        
+        if (post.CrosspostParentList != null && post.CrosspostParentList.Count > 0)
+        {
+          return GetMediaUrlFromPost(post.CrosspostParentList[0]);
+        }
+
+        string mediaUrl;
+        if (System.IO.Path.GetExtension(post.Url).ToLower() == ".gifv")
+          mediaUrl = $"{post.Url.Substring(0, post.Url.Length - 5)}.mp4";
+        else
+          mediaUrl = post.Url;
+
+        return new Uri(mediaUrl);
       }
       else
         throw new ArgumentException($"Given post '{post}' is not a valid kind.");

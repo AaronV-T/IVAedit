@@ -94,6 +94,9 @@ namespace IVAE.RedditBot.DTO
     [JsonProperty("created")]
     public long? Created { get; set; }
 
+    [JsonProperty("crosspost_parent_list")]
+    public List<RedditThing> CrosspostParentList { get; set; }
+
     [JsonProperty("created_utc")]
     public long? CreatedUtc { get; set; }
 

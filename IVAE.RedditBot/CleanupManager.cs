@@ -28,27 +28,39 @@ namespace IVAE.RedditBot
 
       foreach (UploadLog uploadLog in uploadLogs)
       {
-        if (uploadLog.UploadDatetime < DateTime.UtcNow.AddDays(-7))
+        if (uploadLog.Deleted || uploadLog.UploadDatetime < DateTime.UtcNow.AddDays(-7))
           continue;
 
         List<RedditThing> postAndReply = await redditClient.GetInfoOfCommentsAndLinks("all", new List<string> { uploadLog.PostFullname, uploadLog.ReplyFullname });
         RedditThing originalFilePost = postAndReply[0];
         RedditThing replyComment = postAndReply[1];
 
-        if ((originalFilePost.Over18 != null && originalFilePost.Over18.Value) ||
-            replyComment.Score < 0 ||
-            originalFilePost.Author == "[deleted]" ||
-            originalFilePost.BannedAtUtc != null ||
-            originalFilePost.Body.ToLower().Contains("nsfw") ||
-            originalFilePost.Body.ToLower().Contains("nsfl"))
-        {
-          await imgurClient.Delete(uploadLog.DeleteKey);
-          await redditClient.DeletePost(uploadLog.ReplyFullname);
-          databaseAccessor.DeleteUploadLog(uploadLog);
-
-          Console.WriteLine($"Deleted post '{uploadLog.ReplyFullname}'.");
-        }
+        if (!settings.FilterSettings.ProcessNSFWContent && originalFilePost.Over18 != null && originalFilePost.Over18.Value)
+          await DeleteUpload(uploadLog, "Post was NSFW.");
+        else if (!settings.FilterSettings.ProcessNSFWContent && originalFilePost.Body != null && (originalFilePost.Body.ToLower().Contains("nsfw") || originalFilePost.Body.ToLower().Contains("nsfl")))
+          await DeleteUpload(uploadLog, $"Post was self-marked as NSFW.");
+        else if (replyComment.Score < 0)
+          await DeleteUpload(uploadLog, $"Reply score ({replyComment.Score}) was too low.");
+        else if (originalFilePost.Kind == "t1" && originalFilePost.Author == "[deleted]")
+          await DeleteUpload(uploadLog, $"Post was deleted or removed.");
+        else if (originalFilePost.BannedAtUtc != null)
+          await DeleteUpload(uploadLog, $"Post was removed.");
       }
+    }
+
+    private async Task DeleteUpload(UploadLog uploadLog, string reason)
+    {
+      if (uploadLog.UploadDestination.ToLower() == "imgur")
+        await imgurClient.Delete(uploadLog.DeleteKey);
+
+      await redditClient.DeletePost(uploadLog.ReplyFullname);
+
+      uploadLog.Deleted = true;
+      uploadLog.DeleteDatetime = DateTime.UtcNow;
+      uploadLog.DeleteReason = reason;
+      databaseAccessor.SaveUploadLog(uploadLog);
+
+      Console.WriteLine($"Deleted post '{uploadLog.ReplyFullname}'.");
     }
   }
 }

@@ -305,7 +305,7 @@ namespace IVAE.MediaManipulation
       ResizeVideoHelper(outputPath, videoPath, $"trunc(iw*{scaleFactor}/2)*2", $"trunc(ih*{scaleFactor}/2)*2");
     }
 
-    public void StabilizeVideo(string outputPath, string videoPath)
+    public void StabilizeVideo(string outputPath, string videoPath, bool useLinearInterpolation = false)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
@@ -318,10 +318,24 @@ namespace IVAE.MediaManipulation
       FFmpegProcessRunner fpr = new FFmpegProcessRunner();
       fpr.OnDurationMessage += DurationMessageReceived;
       fpr.OnTimeMessage += TimeMessageReceived;
-      totalSteps = 1;
+      totalSteps = 2;
+
+      string additionalTransformParameterString = string.Empty;
+      if (useLinearInterpolation)
+        additionalTransformParameterString = ":interpol=linear:crop=black";
+
+      string dummyOutputPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(videoPath), "dummy.mp4");
+
+      if (System.IO.File.Exists(dummyOutputPath))
+        System.IO.File.Delete(dummyOutputPath);
 
       currentStep = 1;
-      fpr.Run($"-i \"{videoPath}\" -vf deshake \"{outputPath}\"");
+      fpr.Run($"-i \"{videoPath}\" -vf vidstabdetect \"{dummyOutputPath}\"");
+
+      System.IO.File.Delete(dummyOutputPath);
+
+      currentStep = 2;
+      fpr.Run($"-i \"{videoPath}\" -vf vidstabtransform=optzoom=0{additionalTransformParameterString},unsharp=5:5:0.8:3:3:0.4 \"{outputPath}\"");
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;

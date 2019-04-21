@@ -68,18 +68,6 @@ namespace IVAE.RedditBot
       return GetThingsFromResponse(responseContent);
     }
 
-    public async Task<List<RedditThing>> GetInfoOfAllCommentsFromUser(string username)
-    {
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/user/{username}/comments/.json?limit=100");
-      SetRatelimitInfo(response);
-      string responseContent = await response.Content.ReadAsStringAsync();
-
-      Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
-
-      return GetThingsFromResponse(responseContent);
-    }
-
     public async Task<RedditThing> GetInfoOfUser(string username)
     {
       await WaitUntilARequestCanBeMade();
@@ -137,7 +125,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
       RedditThing deserializedResponse = JsonConvert.DeserializeObject<RedditThing>(responseContent);
       if (deserializedResponse == null)

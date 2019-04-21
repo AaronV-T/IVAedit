@@ -8,6 +8,9 @@ namespace IVAE.RedditBot.DTO
 {
   public class UploadLog
   {
+    public bool Deleted { get; set; }
+    public DateTime? DeleteDatetime { get; set; }
+    public string DeleteReason { get; set; }
     public string DeleteKey { get; set; }
     public int Id { get; set; }
     public string PostFullname { get; set; }

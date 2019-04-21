@@ -40,7 +40,8 @@ namespace IVAE.MediaManipulation
 
     public MediaFileInfo(string path)
     {
-      Dictionary<string, object> dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(new FFProbeProcessRunner().Run($"-v error -show_format -show_streams -print_format json \"{path}\""));
+      string probeResult = new FFProbeProcessRunner().Run($"-v error -show_format -show_streams -print_format json \"{path}\"");
+      Dictionary<string, object> dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(probeResult);
 
       List<AudioStreamInfo> audioStreams = new List<AudioStreamInfo>();
       List<VideoStreamInfo> videoStreams = new List<VideoStreamInfo>();

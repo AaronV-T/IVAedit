@@ -20,33 +20,33 @@ namespace IVAE.RedditBot
       this.connectionString = connectionString;
     }
 
-    public int AddUploadLog(UploadLog uploadLog)
+    public void SaveUploadLog(UploadLog uploadLog)
     {
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
       using (IDbCommand dbCommand = dbConnection.CreateCommand())
       {
-        dbCommand.CommandText = "INSERT INTO UploadLogs (delete_key, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination) OUTPUT inserted.id VALUES (@delete_key, @post_fullname, @reply_fullname, @requestor_username, @upload_datetime, @upload_destination)";
+        bool isInsertCommand = uploadLog.Id == 0;
 
+        if (isInsertCommand)
+          dbCommand.CommandText = "INSERT INTO UploadLogs (deleted, delete_datetime, delete_reason, delete_key, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination) OUTPUT inserted.id VALUES (@deleted, @delete_datetime, @delete_reason, @delete_key, @post_fullname, @reply_fullname, @requestor_username, @upload_datetime, @upload_destination)";
+        else
+          dbCommand.CommandText = "UPDATE UploadLogs SET deleted = @deleted, delete_datetime = @delete_datetime, delete_reason = @delete_reason, delete_key = @delete_key, post_fullname = @post_fullname, reply_fullname = @reply_fullname, requestor_username = @requestor_username, upload_datetime = @upload_datetime, upload_destination = @upload_destination WHERE id = @id";
+
+        dbCommand.AddParameter("@deleted", uploadLog.Deleted);
+        dbCommand.AddParameter("@delete_datetime", (object)uploadLog.DeleteDatetime ?? DBNull.Value);
+        dbCommand.AddParameter("@delete_reason", (object)uploadLog.DeleteReason ?? DBNull.Value);
         dbCommand.AddParameter("@delete_key", uploadLog.DeleteKey);
+        if (!isInsertCommand) dbCommand.AddParameter("@id", uploadLog.Id);
         dbCommand.AddParameter("@post_fullname", uploadLog.PostFullname);
         dbCommand.AddParameter("@reply_fullname", uploadLog.ReplyFullname);
         dbCommand.AddParameter("@requestor_username", uploadLog.RequestorUsername);
         dbCommand.AddParameter("@upload_datetime", uploadLog.UploadDatetime);
         dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
 
-        return (int)dbCommand.ExecuteScalar();
-      }
-    }
+        int result = (int)dbCommand.ExecuteScalar();
 
-    public void DeleteUploadLog(UploadLog uploadLog)
-    {
-      using (IDbConnection dbConnection = this.GetOpenDbConnection())
-      using (IDbCommand dbCommand = dbConnection.CreateCommand())
-      {
-        dbCommand.CommandText = "DELETE FROM UploadLogs WHERE id = @id";
-        dbCommand.AddParameter("@id", uploadLog.Id);
-
-        dbCommand.ExecuteNonQuery();
+        if (isInsertCommand)
+          uploadLog.Id = result;
       }
     }
 
@@ -92,7 +92,7 @@ namespace IVAE.RedditBot
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
       using (IDbCommand dbCommand = dbConnection.CreateCommand())
       {
-        dbCommand.CommandText = "SELECT delete_key, id, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination FROM UploadLogs";
+        dbCommand.CommandText = "SELECT deleted, delete_datetime, delete_reason, delete_key, id, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination FROM UploadLogs";
 
         using (IDataReader dataReader = dbCommand.ExecuteReader())
         {
@@ -102,6 +102,9 @@ namespace IVAE.RedditBot
           {
             int col = 0;
             UploadLog uploadLog = new UploadLog();
+            uploadLog.Deleted = dataReader.GetBoolean(col++);
+            if (!dataReader.IsDBNull(col++)) uploadLog.DeleteDatetime = dataReader.GetDateTime(col);
+            if (!dataReader.IsDBNull(col++)) uploadLog.DeleteReason = dataReader.GetString(col);
             uploadLog.DeleteKey = dataReader.GetString(col++);
             uploadLog.Id = dataReader.GetInt32(col++);
             uploadLog.PostFullname= dataReader.GetString(col++);

@@ -44,10 +44,14 @@ namespace IVAE.RedditBot
             foreach (string paramString in parameterStrings)
             {
               List<string> splitParamString = paramString.Split('=').ToList();
-              if (splitParamString.Count != 2)
+              if (splitParamString.Count > 2)
                 throw new ArgumentException($"Invalid parameter '{paramString}'.");
 
-              parameters.Add(splitParamString[0], splitParamString[1]);
+              string value = string.Empty;
+              if (splitParamString.Count == 2)
+                value = splitParamString[1];
+
+              parameters.Add(splitParamString[0], value);
             }
           }
 
@@ -277,14 +281,25 @@ namespace IVAE.RedditBot
 
   public class StabilizeCommand : IVAECommand
   {
+    bool useLinearInterpolation;
+
     public StabilizeCommand(Dictionary<string, string> parameters)
     {
-      foreach (var kvp in parameters) { }
+      foreach (var kvp in parameters)
+      {
+        switch (kvp.Key.ToUpper())
+        {
+          case "LI":
+            useLinearInterpolation = !string.IsNullOrEmpty(kvp.Value) ? bool.Parse(kvp.Value) : true;
+
+            break;
+        }
+      }
     }
 
     public string Execute(string filePath)
     {
-      return new MediaManipulation.TaskHandler().StabilizeVideo(filePath);
+      return new MediaManipulation.TaskHandler().StabilizeVideo(filePath, useLinearInterpolation);
     }
   }
 
