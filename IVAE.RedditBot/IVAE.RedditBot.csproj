@@ -50,6 +50,7 @@
     <Compile Include="DatabaseAccessor.cs" />
     <Compile Include="DTO\UploadLog.cs" />
     <Compile Include="CleanupManager.cs" />
+    <Compile Include="YoutubedlProcessRunner.cs" />
     <Compile Include="MessageProcessor.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="IVAECommand.cs" />
@@ -64,6 +65,9 @@
     <Compile Include="DTO\Settings.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="youtube-dl.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="App.config" />
     <None Include="packages.config" />
     <EmbeddedResource Include="Resources\SQL\DBUpdate_1.sql" />

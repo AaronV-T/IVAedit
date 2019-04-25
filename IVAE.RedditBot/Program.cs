@@ -24,10 +24,9 @@ namespace IVAE.RedditBot
       catch(Exception ex)
       {
         Console.WriteLine(ex.ToString());
+        Console.WriteLine("Press any key to exit.");
+        Console.ReadKey();
       }
-
-      Console.WriteLine("Press any key to exit.");
-      Console.ReadKey();
     }
 
     private static async Task RunProcessLoop()

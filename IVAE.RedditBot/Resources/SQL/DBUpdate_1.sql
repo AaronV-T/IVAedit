@@ -35,3 +35,15 @@ CREATE TABLE [dbo].[UploadLogs](
 ))
 END
 GO
+
+IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND  TABLE_NAME = 'FallbackRepliesLinks'))
+BEGIN
+CREATE TABLE [dbo].[FallbackRepliesLinks](
+	[link_fullname] [varchar](50) NOT NULL,
+	[link_datetime] [datetime] NOT NULL,
+ CONSTRAINT [PK_FallbackRepliesLinks] PRIMARY KEY CLUSTERED 
+(
+	[link_fullname] ASC
+))
+END
+GO

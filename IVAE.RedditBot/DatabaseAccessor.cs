@@ -20,33 +20,17 @@ namespace IVAE.RedditBot
       this.connectionString = connectionString;
     }
 
-    public void SaveUploadLog(UploadLog uploadLog)
+    public void AddFallbackReplyLink(string linkFullname, DateTime linkDatetime)
     {
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
       using (IDbCommand dbCommand = dbConnection.CreateCommand())
       {
-        bool isInsertCommand = uploadLog.Id == 0;
+        dbCommand.CommandText = "INSERT INTO FallbackRepliesLinks (link_fullname, link_datetime) VALUES (@link_fullname, @link_datetime)";
 
-        if (isInsertCommand)
-          dbCommand.CommandText = "INSERT INTO UploadLogs (deleted, delete_datetime, delete_reason, delete_key, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination) OUTPUT inserted.id VALUES (@deleted, @delete_datetime, @delete_reason, @delete_key, @post_fullname, @reply_fullname, @requestor_username, @upload_datetime, @upload_destination)";
-        else
-          dbCommand.CommandText = "UPDATE UploadLogs SET deleted = @deleted, delete_datetime = @delete_datetime, delete_reason = @delete_reason, delete_key = @delete_key, post_fullname = @post_fullname, reply_fullname = @reply_fullname, requestor_username = @requestor_username, upload_datetime = @upload_datetime, upload_destination = @upload_destination WHERE id = @id";
+        dbCommand.AddParameter("@link_fullname", linkFullname);
+        dbCommand.AddParameter("@link_datetime", linkDatetime);
 
-        dbCommand.AddParameter("@deleted", uploadLog.Deleted);
-        dbCommand.AddParameter("@delete_datetime", (object)uploadLog.DeleteDatetime ?? DBNull.Value);
-        dbCommand.AddParameter("@delete_reason", (object)uploadLog.DeleteReason ?? DBNull.Value);
-        dbCommand.AddParameter("@delete_key", uploadLog.DeleteKey);
-        if (!isInsertCommand) dbCommand.AddParameter("@id", uploadLog.Id);
-        dbCommand.AddParameter("@post_fullname", uploadLog.PostFullname);
-        dbCommand.AddParameter("@reply_fullname", uploadLog.ReplyFullname);
-        dbCommand.AddParameter("@requestor_username", uploadLog.RequestorUsername);
-        dbCommand.AddParameter("@upload_datetime", uploadLog.UploadDatetime);
-        dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
-
-        int result = (int)dbCommand.ExecuteScalar();
-
-        if (isInsertCommand)
-          uploadLog.Id = result;
+        dbCommand.ExecuteNonQuery();
       }
     }
 
@@ -83,6 +67,29 @@ namespace IVAE.RedditBot
           }
 
           dbTransaction.Commit();
+        }
+      }
+    }
+
+    public Tuple<string, DateTime> GetMostRecentFallbackRepliesLink()
+    {
+      using (IDbConnection dbConnection = this.GetOpenDbConnection())
+      using (IDbCommand dbCommand = dbConnection.CreateCommand())
+      {
+        dbCommand.CommandText = "SELECT link_fullname, link_datetime FROM FallbackRepliesLinks ORDER BY link_datetime";
+
+        using (IDataReader dataReader = dbCommand.ExecuteReader())
+        {
+          if (dataReader.Read())
+          {
+            int col = 0;
+            string fullName = dataReader.GetString(col++);
+            DateTime datetime = dataReader.GetDateTime(col++);
+
+            return new Tuple<string, DateTime>(fullName, datetime);
+          }
+
+          return null;
         }
       }
     }
@@ -131,6 +138,36 @@ namespace IVAE.RedditBot
 
         dbCommand.CommandText = "SELECT SettingValue From DBSettings WHERE SettingKey = 'SchemaVersion'";
         return int.Parse((string)dbCommand.ExecuteScalar());
+      }
+    }
+
+    public void SaveUploadLog(UploadLog uploadLog)
+    {
+      using (IDbConnection dbConnection = this.GetOpenDbConnection())
+      using (IDbCommand dbCommand = dbConnection.CreateCommand())
+      {
+        bool isInsertCommand = uploadLog.Id == 0;
+
+        if (isInsertCommand)
+          dbCommand.CommandText = "INSERT INTO UploadLogs (deleted, delete_datetime, delete_reason, delete_key, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination) OUTPUT inserted.id VALUES (@deleted, @delete_datetime, @delete_reason, @delete_key, @post_fullname, @reply_fullname, @requestor_username, @upload_datetime, @upload_destination)";
+        else
+          dbCommand.CommandText = "UPDATE UploadLogs SET deleted = @deleted, delete_datetime = @delete_datetime, delete_reason = @delete_reason, delete_key = @delete_key, post_fullname = @post_fullname, reply_fullname = @reply_fullname, requestor_username = @requestor_username, upload_datetime = @upload_datetime, upload_destination = @upload_destination WHERE id = @id";
+
+        dbCommand.AddParameter("@deleted", uploadLog.Deleted);
+        dbCommand.AddParameter("@delete_datetime", (object)uploadLog.DeleteDatetime ?? DBNull.Value);
+        dbCommand.AddParameter("@delete_reason", (object)uploadLog.DeleteReason ?? DBNull.Value);
+        dbCommand.AddParameter("@delete_key", uploadLog.DeleteKey);
+        if (!isInsertCommand) dbCommand.AddParameter("@id", uploadLog.Id);
+        dbCommand.AddParameter("@post_fullname", uploadLog.PostFullname);
+        dbCommand.AddParameter("@reply_fullname", uploadLog.ReplyFullname);
+        dbCommand.AddParameter("@requestor_username", uploadLog.RequestorUsername);
+        dbCommand.AddParameter("@upload_datetime", uploadLog.UploadDatetime);
+        dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
+
+        int result = (int)dbCommand.ExecuteScalar();
+
+        if (isInsertCommand)
+          uploadLog.Id = result;
       }
     }
 

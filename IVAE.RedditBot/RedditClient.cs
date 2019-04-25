@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -41,7 +42,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      //Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
     }
 
     public async Task<RedditThing> GetInfoOfCommentOrLink(string subreddit, string fullName)
@@ -63,7 +64,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
       return GetThingsFromResponse(responseContent);
     }
@@ -75,7 +76,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      //Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
       List<RedditThing> things = GetThingsFromResponse(responseContent);
       if (things == null || things.Count == 0)
@@ -93,7 +94,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      //Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
       return GetThingsFromResponse(responseContent);
     }
@@ -115,7 +116,7 @@ namespace IVAE.RedditBot
     public async Task<string> PostComment(string parentFullName, string text)
     {
       Dictionary<string, string> data = new Dictionary<string, string>();
-      data.Add("return_rtjson", "true");
+      data.Add("api_type", "json");
       data.Add("thing_id", parentFullName);
       data.Add("text", text);
 
@@ -125,13 +126,41 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
 
-      RedditThing deserializedResponse = JsonConvert.DeserializeObject<RedditThing>(responseContent);
+      dynamic deserializedResponse = JsonConvert.DeserializeObject<dynamic>(responseContent);
       if (deserializedResponse == null)
         return null;
 
-      return deserializedResponse.Name;
+      RedditThing commentThing = ((JObject)deserializedResponse.json.data.things[0].data).ToObject<RedditThing>();
+      if (commentThing == null)
+        return null;
+
+      return commentThing.Name;
+    }
+
+    public async Task<string> Submit(string subreddit, string title, string description)
+    {
+      Dictionary<string, string> data = new Dictionary<string, string>();
+      data.Add("api_type", "json");
+      data.Add("kind", "self");
+      data.Add("sr", subreddit);
+      data.Add("text", description);
+      data.Add("title", title);
+
+      HttpContent content = new FormUrlEncodedContent(data);
+      await WaitUntilARequestCanBeMade();
+      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/submit", content);
+      SetRatelimitInfo(response);
+      string responseContent = await response.Content.ReadAsStringAsync();
+
+      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+
+      dynamic deserializedResponse = JsonConvert.DeserializeObject<dynamic>(responseContent);
+      if (deserializedResponse == null)
+        return null;
+
+      return deserializedResponse.json.data.name;
     }
 
     public async Task<string> Test()

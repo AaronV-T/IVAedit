@@ -35,17 +35,13 @@ namespace IVAE.RedditBot
         List<RedditThing> messages = await redditClient.GetUnreadMessages();
 
         Console.WriteLine("Filtering out messages that aren't comments with user mentions...");
-        List<RedditThing> comments = await FilterMentionMessagesAndMarkRestRead(messages);
+        List<RedditThing> mentionComments = await FilterMentionMessagesAndMarkRestRead(messages);
 
-        Console.WriteLine($"Getting parents of {comments.Count} comments...");
-        Dictionary<RedditThing, RedditThing> commentsWithParents = await GetParentsOfComments( messages);
+        Console.WriteLine($"Getting parents of {mentionComments.Count} comments...");
+        Dictionary<RedditThing, RedditThing> commentsWithParents = await GetParentsOfComments(mentionComments);
 
         Console.WriteLine($"Processing {commentsWithParents.Count} posts...");
         await ProcessPosts(commentsWithParents);
-
-        //sb.AppendLine(Newtonsoft.Json.JsonConvert.SerializeObject(commentsWithParents, Newtonsoft.Json.Formatting.Indented, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }));
-        //System.IO.File.WriteAllText("output.txt", sb.ToString());
-        //System.Diagnostics.Process.Start("output.txt");
       }
       catch (Exception ex)
       {
@@ -62,7 +58,7 @@ namespace IVAE.RedditBot
       List<RedditThing> messagesToProcess = new List<RedditThing>();
       foreach (RedditThing message in unreadMessages)
       {
-        if (message.Kind == "t4" || message.Body.Trim().IndexOf("/u/IVAedit") != 0)
+        if (message.Kind == "t4" || message.Body.Trim().IndexOf($"/u/{redditClient.Username}") != 0)
         {
           messagesToMarkRead.Add(message.Name);
           continue;
@@ -103,7 +99,7 @@ namespace IVAE.RedditBot
             continue;
           }
 
-          //await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
+          await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
 
           // Verify that the requestor isn't blacklisted.
           if (settings.RequestorBlacklist.Contains(mentionComment.Author))
@@ -112,10 +108,16 @@ namespace IVAE.RedditBot
             continue;
           }
 
+          Func<string, Task> onFailedToProcessPost = async (reason) =>
+          {
+            Console.WriteLine($"Skipping {mentionComment.Name}: {reason}. ({mentionComment.Author}: '{mentionComment.Body}')");
+            await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to process your [request](https://reddit.com{mentionComment.Context}). Reason: {reason}");
+          };
+
           // Verify that the post is safe to process.
           if (!requestorIsWhitelisted && !await PostIsSafeToProcess(parentPost, true))
           {
-            Console.WriteLine($"Skipping {mentionComment.Name}: Post is not safe to process. ({mentionComment.Author}: '{mentionComment.Body}')");
+            await onFailedToProcessPost("Post is not safe.");
             continue;
           }
 
@@ -123,27 +125,20 @@ namespace IVAE.RedditBot
           List<IVAECommand> commands = IVAECommandFactory.CreateCommands(mentionComment.Body.Split('\n')[0]);
           if (commands == null || commands.Count == 0)
           {
-            Console.WriteLine($"Skipping {mentionComment.Name}: No valid commands. ({mentionComment.Author}: '{mentionComment.Body}')");
+            await onFailedToProcessPost("No valid commands.");
             continue;
           }
           else if (commands.Any(command => commands.Count(cmd => cmd.GetType() == command.GetType()) > 1)) // This is O(n^2), consider something more efficient.
           {
-            Console.WriteLine($"Skipping {mentionComment.Name}: Multiple commands of same type. ({mentionComment.Author}: '{mentionComment.Body}')");
+            await onFailedToProcessPost("Multiple commands of same type.");
             continue;
           }
 
           // Get url to media file.
           Uri mediaUrl = GetMediaUrlFromPost(parentPost);
-          if (string.IsNullOrWhiteSpace(mediaUrl.AbsoluteUri))
+          if (mediaUrl == null || string.IsNullOrWhiteSpace(mediaUrl.AbsoluteUri))
           {
-            Console.WriteLine($"Skipping {mentionComment.Name}: Invalid media url. ({mentionComment.Author}: '{mentionComment.Body}')");
-            continue;
-          }
-
-          // Verify that the file is not too large.
-          if (!TryGetMediaFileSize(mediaUrl.AbsoluteUri, out long fileSize) || fileSize > settings.FilterSettings.MaximumDownloadFileSizeInMB * 10000000)
-          {
-            Console.WriteLine($"Skipping {mentionComment.Name}: Bad media file size. ({mentionComment.Author}: '{mentionComment.Body}')");
+            await onFailedToProcessPost("Invalid media URL.");
             continue;
           }
 
@@ -154,33 +149,17 @@ namespace IVAE.RedditBot
           string mediaFilePath = null;
           try
           {
-            // Get a good file name.
-            int mediaUrlFileNameStartIndex = mediaUrl.AbsoluteUri.LastIndexOf('/') + 1;
-            string extension = System.IO.Path.GetExtension(mediaUrl.AbsoluteUri);
-            if (string.IsNullOrEmpty(extension))
-              extension = ".mp4";
-            mediaFilePath = System.IO.Path.Combine(DOWNLOAD_DIR, $"{Guid.NewGuid()}{extension}");
-
             // Download the media file.
             System.Diagnostics.Stopwatch downloadStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            using (System.Net.WebClient client = new System.Net.WebClient())
+            string fileNameWithoutExtension = Guid.NewGuid().ToString();
+            string filePathWithoutExtension = System.IO.Path.Combine(DOWNLOAD_DIR, fileNameWithoutExtension);
+            YoutubedlProcessRunner youtubedlProcessRunner = new YoutubedlProcessRunner();
+            List<string> downloadOutput = youtubedlProcessRunner.Run($"\"{mediaUrl.AbsoluteUri}\" --max-filesize {settings.FilterSettings.MaximumDownloadFileSizeInMB}m -o \"{filePathWithoutExtension}.%(ext)s\" -f mp4");
+            mediaFilePath = System.IO.Directory.GetFiles(DOWNLOAD_DIR, $"{fileNameWithoutExtension}*").SingleOrDefault();
+            if (mediaFilePath == null)
             {
-              client.DownloadFile(mediaUrl, mediaFilePath);
-
-              if (mediaUrl.Host == "v.redd.it")
-              {
-                try
-                {
-                  string audioUrl = $"{mediaUrl.AbsoluteUri.Substring(0, mediaUrl.AbsoluteUri.LastIndexOf("/"))}/audio";
-                  string audioFilePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(mediaFilePath), $"{System.IO.Path.GetFileNameWithoutExtension(mediaFilePath)}_audio");
-                  client.DownloadFile(audioUrl, audioFilePath);
-                  new MediaManipulation.FFmpegProcessRunner().Run($"-i {mediaFilePath} -i {audioFilePath} -acodec copy -vcodec copy combined.mp4");
-                  System.IO.File.Delete(audioFilePath);
-                  System.IO.File.Delete(mediaFilePath);
-                  System.IO.File.Move("combined.mp4", mediaFilePath);
-                }
-                catch (Exception) { }
-              }
+              await onFailedToProcessPost("Failed to download media file.");
+              continue;
             }
             downloadStopwatch.Stop();
 
@@ -197,6 +176,8 @@ namespace IVAE.RedditBot
             transformStopwatch.Stop();
             long transformedFileSize = new System.IO.FileInfo(mediaFilePath).Length;
 
+            MediaManipulation.MediaFileInfo mediaFileInfo = new MediaManipulation.MediaFileInfo(mediaFilePath);
+
             // Upload altered media file.
             System.Diagnostics.Stopwatch uploadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             string videoFormat = null;
@@ -207,34 +188,31 @@ namespace IVAE.RedditBot
 
             if (uploadResponse == null)
             {
-              Console.WriteLine("Upload failed.");
+              await onFailedToProcessPost("Failed to upload transformed file.");
               continue;
             }
 
             // Respond with link.
-            string replyCommentName = await redditClient.PostComment(mentionComment.Name, $"[Direct File Link]({uploadResponse.Link}) - [Post Link](https://imgur.com/{uploadResponse.Id})\n\n***\nI am a bot in development.  \nDownload: {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transform: {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, upload: {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {((double)transformedFileSize / 1000000).ToString("N2")}MB.");
-            Console.WriteLine($"Reply Posted: {replyCommentName != null}");
+            string responseText = $"[Direct File Link]({uploadResponse.Link}) - [Post Link](https://imgur.com/{uploadResponse.Id})\n\n***\nI am a bot in development.  \nDownload: {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transform: {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, upload: {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {((double)transformedFileSize / 1000000).ToString("N2")}MB.";
+            string replyCommentName = await redditClient.PostComment(mentionComment.Name, responseText);
+            if (replyCommentName == null)
+              replyCommentName = await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to repond directly to your [request]({mentionComment.Permalink}) so I have posted my response here.\n\n{responseText}");
 
-            if (replyCommentName != null)
+            databaseAccessor.SaveUploadLog(new UploadLog
             {
-              databaseAccessor.SaveUploadLog(new UploadLog
-              {
-                Deleted = false,
-                DeleteKey = uploadResponse.DeleteHash,
-                PostFullname = parentPost.Name,
-                ReplyFullname = replyCommentName,
-                RequestorUsername = mentionComment.Author,
-                UploadDatetime = DateTime.UtcNow,
-                UploadDestination = "imgur"
-              });
-            }
-            else
-              await imgurClient.Delete(uploadResponse.DeleteHash);
+              Deleted = false,
+              DeleteKey = uploadResponse.DeleteHash,
+              PostFullname = parentPost.Name,
+              ReplyFullname = replyCommentName,
+              RequestorUsername = mentionComment.Author,
+              UploadDatetime = DateTime.UtcNow,
+              UploadDestination = "imgur"
+            });
           }
           catch (Exception)
           {
-            //if (!string.IsNullOrWhiteSpace(mediaFilePath) && System.IO.File.Exists(mediaFilePath))
-              //System.IO.File.Delete(mediaFilePath);
+            if (!string.IsNullOrWhiteSpace(mediaFilePath) && System.IO.File.Exists(mediaFilePath))
+              System.IO.File.Delete(mediaFilePath);
 
             throw;
           }
@@ -264,31 +242,7 @@ namespace IVAE.RedditBot
       // Link
       else if (post.Kind == "t3")
       {
-        if (post.Media != null)
-        {
-          dynamic mediaObj = post.Media;
-          if (mediaObj.reddit_video == null)
-          {
-            Console.WriteLine($"Can't find reddit_video object in post's media object.");
-            return null;
-          }
-
-          string url = mediaObj.reddit_video.fallback_url;
-          return new Uri(url);
-        }
-        
-        if (post.CrosspostParentList != null && post.CrosspostParentList.Count > 0)
-        {
-          return GetMediaUrlFromPost(post.CrosspostParentList[0]);
-        }
-
-        string mediaUrl;
-        if (System.IO.Path.GetExtension(post.Url).ToLower() == ".gifv")
-          mediaUrl = $"{post.Url.Substring(0, post.Url.Length - 5)}.mp4";
-        else
-          mediaUrl = post.Url;
-
-        return new Uri(mediaUrl);
+        return new Uri(post.Url);
       }
       else
         throw new ArgumentException($"Given post '{post}' is not a valid kind.");
@@ -339,6 +293,21 @@ namespace IVAE.RedditBot
       }
       else
         throw new ArgumentException($"Given post '{post.Name}' is not a valid kind '{post.Kind}'.");
+    }
+
+    private async Task<string> PostReplyToFallbackThread(string text)
+    {
+      Tuple<string, DateTime> mostRecentFallbackReplyPost = databaseAccessor.GetMostRecentFallbackRepliesLink();
+      string fallbackRepliesLinkName;
+      if (mostRecentFallbackReplyPost != null && mostRecentFallbackReplyPost.Item2 > DateTime.Today.AddDays(-7))
+        fallbackRepliesLinkName = mostRecentFallbackReplyPost.Item1;
+      else
+      {
+        fallbackRepliesLinkName = await redditClient.Submit(settings.FallbackReplySubreddit, $"Offical {redditClient.Username} Replies ({DateTime.Today.ToLongDateString()})", $"This is for {redditClient.Username} to respond to requests.");
+        databaseAccessor.AddFallbackReplyLink(fallbackRepliesLinkName, DateTime.UtcNow);
+      }
+
+      return await redditClient.PostComment(fallbackRepliesLinkName, text);
     }
   }
 }
