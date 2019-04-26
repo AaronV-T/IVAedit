@@ -442,7 +442,7 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
-    public string StabilizeVideo(string videoFilePath, bool useLinearInterpolation = false)
+    public string StabilizeVideo(string videoFilePath)
     {
       OnChangeStep?.Invoke("Stabilizing Video");
 
@@ -450,7 +450,7 @@ namespace IVAE.MediaManipulation
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
-      videoManipulator.StabilizeVideo(outputPath, videoFilePath, useLinearInterpolation);
+      videoManipulator.StabilizeVideo(outputPath, videoFilePath);
       videoManipulator.OnProgress -= ProgressUpdate;
 
       return outputPath;

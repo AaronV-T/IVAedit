@@ -110,8 +110,8 @@ namespace IVAE.RedditBot
             int col = 0;
             UploadLog uploadLog = new UploadLog();
             uploadLog.Deleted = dataReader.GetBoolean(col++);
-            if (!dataReader.IsDBNull(col++)) uploadLog.DeleteDatetime = dataReader.GetDateTime(col);
-            if (!dataReader.IsDBNull(col++)) uploadLog.DeleteReason = dataReader.GetString(col);
+            if (!dataReader.IsDBNull(col++)) uploadLog.DeleteDatetime = dataReader.GetDateTime(col - 1);
+            if (!dataReader.IsDBNull(col++)) uploadLog.DeleteReason = dataReader.GetString(col - 1);
             uploadLog.DeleteKey = dataReader.GetString(col++);
             uploadLog.Id = dataReader.GetInt32(col++);
             uploadLog.PostFullname= dataReader.GetString(col++);
@@ -164,10 +164,10 @@ namespace IVAE.RedditBot
         dbCommand.AddParameter("@upload_datetime", uploadLog.UploadDatetime);
         dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
 
-        int result = (int)dbCommand.ExecuteScalar();
-
         if (isInsertCommand)
-          uploadLog.Id = result;
+          uploadLog.Id = (int)dbCommand.ExecuteScalar();
+        else
+          dbCommand.ExecuteNonQuery();
       }
     }
 

@@ -18,6 +18,8 @@ namespace IVAE.RedditBot.DTO
   public class FilterSettings
   {
     public double MaximumDownloadFileSizeInMB { get; set; }
+    public double MaximumUploadFileSizeInMB { get; set; }
+    public double MaximumUploadFileDurationInSeconds { get; set; }
     public double MinimumPostAgeInMinutes { get; set; }
     public int MinimumPostScore { get; set; }
     public double MinimumPostingAccountAgeInDays { get; set; }

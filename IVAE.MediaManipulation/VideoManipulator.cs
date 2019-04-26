@@ -305,7 +305,7 @@ namespace IVAE.MediaManipulation
       ResizeVideoHelper(outputPath, videoPath, $"trunc(iw*{scaleFactor}/2)*2", $"trunc(ih*{scaleFactor}/2)*2");
     }
 
-    public void StabilizeVideo(string outputPath, string videoPath, bool useLinearInterpolation = false)
+    public void StabilizeVideo(string outputPath, string videoPath)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
@@ -320,10 +320,6 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage += TimeMessageReceived;
       totalSteps = 2;
 
-      string additionalTransformParameterString = string.Empty;
-      if (useLinearInterpolation)
-        additionalTransformParameterString = ":interpol=linear:crop=black";
-
       string dummyOutputPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(videoPath), "dummy.mp4");
 
       if (System.IO.File.Exists(dummyOutputPath))
@@ -335,7 +331,7 @@ namespace IVAE.MediaManipulation
       System.IO.File.Delete(dummyOutputPath);
 
       currentStep = 2;
-      fpr.Run($"-i \"{videoPath}\" -vf vidstabtransform=optzoom=0{additionalTransformParameterString},unsharp=5:5:0.8:3:3:0.4 \"{outputPath}\"");
+      fpr.Run($"-i \"{videoPath}\" -vf vidstabtransform=optzoom=0:crop=black,unsharp=5:5:0.8:3:3:0.4 \"{outputPath}\"");
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;

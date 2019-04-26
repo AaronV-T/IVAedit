@@ -13,6 +13,8 @@ namespace IVAE.MediaManipulation
     public IReadOnlyList<VideoStreamInfo> VideoStreams;
     public FormatInfo Format;
 
+    public double? Duration { get; private set; }
+
     public bool HasAudio { get { return FileHasAudio(this); } }
     public bool HasVideo { get { return FileHasVideo(this); } }
 
@@ -69,6 +71,17 @@ namespace IVAE.MediaManipulation
       Format = format;
       AudioStreams = audioStreams;
       VideoStreams = videoStreams;
+
+      foreach(AudioStreamInfo audioStreamInfo in AudioStreams)
+      {
+        if (audioStreamInfo.Duration != null && (Duration == null || audioStreamInfo.Duration > Duration))
+          Duration = audioStreamInfo.Duration;
+      }
+      foreach (VideoStreamInfo videoStreamInfo in VideoStreams)
+      {
+        if (videoStreamInfo.Duration != null && (Duration == null || videoStreamInfo.Duration > Duration))
+          Duration = videoStreamInfo.Duration;
+      }
     }
 
     private MediaFileInfo(FormatInfo format, IReadOnlyList<AudioStreamInfo> audioStreams, IReadOnlyList<VideoStreamInfo> videoStreams)

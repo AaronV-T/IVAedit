@@ -41,7 +41,7 @@ namespace IVAE.RedditBot
           await DeleteUpload(uploadLog, $"Post was self-marked as NSFW.");
         else if (replyComment.Score < 0)
           await DeleteUpload(uploadLog, $"Reply score ({replyComment.Score}) was too low.");
-        else if (originalFilePost.Kind == "t1" && originalFilePost.Author == "[deleted]")
+        else if (originalFilePost.Author == "[deleted]")
           await DeleteUpload(uploadLog, $"Post was deleted or removed.");
         else if (originalFilePost.BannedAtUtc != null)
           await DeleteUpload(uploadLog, $"Post was removed.");
@@ -50,6 +50,8 @@ namespace IVAE.RedditBot
 
     private async Task DeleteUpload(UploadLog uploadLog, string reason)
     {
+      Console.WriteLine($"Deleting UploadLog with ID '{uploadLog.Id}' (reply '{uploadLog.ReplyFullname}')");
+
       if (uploadLog.UploadDestination.ToLower() == "imgur")
         await imgurClient.Delete(uploadLog.DeleteKey);
 

@@ -9,8 +9,6 @@ namespace IVAE.RedditBot
 {
   public class YoutubedlProcessRunner
   {
-    public event Action<double> OnDurationMessage, OnTimeMessage;
-
     public List<string> Run(string arguments)
     {
       ProcessStartInfo processStartInfo = new ProcessStartInfo("youtube-dl.exe", arguments);

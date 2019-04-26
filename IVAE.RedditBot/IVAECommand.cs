@@ -118,6 +118,9 @@ namespace IVAE.RedditBot
             break;
           case "PLAYBACKRATE":
             playbackRate = float.Parse(kvp.Value);
+            if (playbackRate < 0.125 || playbackRate > 8)
+              throw new ArgumentException("Playback rate not a valid value.");
+
             break;
         }
       }
@@ -281,25 +284,14 @@ namespace IVAE.RedditBot
 
   public class StabilizeCommand : IVAECommand
   {
-    bool useLinearInterpolation;
-
     public StabilizeCommand(Dictionary<string, string> parameters)
     {
-      foreach (var kvp in parameters)
-      {
-        switch (kvp.Key.ToUpper())
-        {
-          case "LI":
-            useLinearInterpolation = !string.IsNullOrEmpty(kvp.Value) ? bool.Parse(kvp.Value) : true;
-
-            break;
-        }
-      }
+      foreach (var kvp in parameters) { }
     }
 
     public string Execute(string filePath)
     {
-      return new MediaManipulation.TaskHandler().StabilizeVideo(filePath, useLinearInterpolation);
+      return new MediaManipulation.TaskHandler().StabilizeVideo(filePath);
     }
   }
 

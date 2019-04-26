@@ -1,7 +1,9 @@
 {
   "FallbackReplySubreddit": "IVAEbot",
   "FilterSettings": {
-    "MaximumDownloadFileSizeInMB": 10,
+    "MaximumDownloadFileSizeInMB": 25,
+    "MaximumUploadFileSizeInMB": 25,
+    "MaximumUploadFileDurationInSeconds": 30,
     "MinimumPostAgeInMinutes": 30,
     "MinimumPostScore": 1,
     "MinimumPostingAccountAgeInDays": 30,

@@ -58,7 +58,8 @@ namespace IVAE.RedditBot
       List<RedditThing> messagesToProcess = new List<RedditThing>();
       foreach (RedditThing message in unreadMessages)
       {
-        if (message.Kind == "t4" || message.Body.Trim().IndexOf($"/u/{redditClient.Username}") != 0)
+        int mentionIndex = message.Body.Trim().IndexOf($"u/{redditClient.Username}");
+        if (message.Kind == "t4" || mentionIndex < 0 || mentionIndex > 1)
         {
           messagesToMarkRead.Add(message.Name);
           continue;
@@ -122,7 +123,17 @@ namespace IVAE.RedditBot
           }
 
           // Get the commands from the mention comment.
-          List<IVAECommand> commands = IVAECommandFactory.CreateCommands(mentionComment.Body.Split('\n')[0]);
+          List<IVAECommand> commands;
+          try
+          {
+             commands = IVAECommandFactory.CreateCommands(mentionComment.Body.Split('\n')[0]);
+          }
+          catch (ArgumentException ex)
+          {
+            await onFailedToProcessPost(ex.Message);
+            continue;
+          }
+
           if (commands == null || commands.Count == 0)
           {
             await onFailedToProcessPost("No valid commands.");
@@ -150,7 +161,7 @@ namespace IVAE.RedditBot
           try
           {
             // Download the media file.
-            System.Diagnostics.Stopwatch downloadStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
             string fileNameWithoutExtension = Guid.NewGuid().ToString();
             string filePathWithoutExtension = System.IO.Path.Combine(DOWNLOAD_DIR, fileNameWithoutExtension);
             YoutubedlProcessRunner youtubedlProcessRunner = new YoutubedlProcessRunner();
@@ -161,11 +172,9 @@ namespace IVAE.RedditBot
               await onFailedToProcessPost("Failed to download media file.");
               continue;
             }
-            downloadStopwatch.Stop();
 
             // Execute all commands on the media file.
             long origFileSize = new System.IO.FileInfo(mediaFilePath).Length;
-            System.Diagnostics.Stopwatch transformStopwatch = System.Diagnostics.Stopwatch.StartNew();
             foreach (IVAECommand command in commands)
             {
               string path = command.Execute(mediaFilePath);
@@ -173,18 +182,29 @@ namespace IVAE.RedditBot
               mediaFilePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(mediaFilePath), $"{System.IO.Path.GetFileNameWithoutExtension(mediaFilePath)}{System.IO.Path.GetExtension(path)}");
               System.IO.File.Move(path, mediaFilePath);
             }
-            transformStopwatch.Stop();
-            long transformedFileSize = new System.IO.FileInfo(mediaFilePath).Length;
 
-            MediaManipulation.MediaFileInfo mediaFileInfo = new MediaManipulation.MediaFileInfo(mediaFilePath);
+            double transformedFileSizeInMB = ((double)new System.IO.FileInfo(mediaFilePath).Length) / 1000000;
+            MediaManipulation.MediaFileInfo transformedMFI = new MediaManipulation.MediaFileInfo(mediaFilePath);
+            if (transformedFileSizeInMB > settings.FilterSettings.MaximumUploadFileSizeInMB)
+            {
+              await onFailedToProcessPost($"Output file ({transformedFileSizeInMB.ToString("N2")}MB) can not be larger than {settings.FilterSettings.MaximumUploadFileSizeInMB}MB.");
+              continue;
+            }
+            else if (transformedMFI.Duration > settings.FilterSettings.MaximumUploadFileDurationInSeconds)
+            {
+              await onFailedToProcessPost($"Output file ({transformedMFI.Duration.Value.ToString("N2")}s) can not be longer than {settings.FilterSettings.MaximumUploadFileDurationInSeconds} seconds.");
+              continue;
+            }
 
             // Upload altered media file.
-            System.Diagnostics.Stopwatch uploadStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            byte[] mediaFileBytes = System.IO.File.ReadAllBytes(mediaFilePath);
+            string deleteKey, uploadDestination, uploadLink;
+            uploadDestination = "imgur";
+
             string videoFormat = null;
             if (System.IO.Path.GetExtension(mediaFilePath) == ".mp4")
               videoFormat = "mp4";
-            ImgurUploadResponse uploadResponse = await imgurClient.Upload(System.IO.File.ReadAllBytes(mediaFilePath), videoFormat);
-            uploadStopwatch.Stop();
+            ImgurUploadResponse uploadResponse = await imgurClient.Upload(mediaFileBytes, videoFormat);
 
             if (uploadResponse == null)
             {
@@ -192,8 +212,15 @@ namespace IVAE.RedditBot
               continue;
             }
 
+            deleteKey = uploadResponse.DeleteHash;
+            uploadLink = uploadResponse.Link;
+
             // Respond with link.
-            string responseText = $"[Direct File Link]({uploadResponse.Link}) - [Post Link](https://imgur.com/{uploadResponse.Id})\n\n***\nI am a bot in development.  \nDownload: {downloadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, transform: {transformStopwatch.Elapsed.TotalMinutes.ToString("N2")}m, upload: {uploadStopwatch.Elapsed.TotalMinutes.ToString("N2")}m. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {((double)transformedFileSize / 1000000).ToString("N2")}MB.";
+            stopwatch.Stop();
+            string responseText = $"[Direct File Link]({uploadLink})\n\n" +
+              $"***\n" +
+              $"I am a bot in development. [More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback)  \n" +
+              $"Operations took {stopwatch.Elapsed.TotalMinutes.ToString("N2")} minutes. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {transformedFileSizeInMB.ToString("N2")}MB.";
             string replyCommentName = await redditClient.PostComment(mentionComment.Name, responseText);
             if (replyCommentName == null)
               replyCommentName = await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to repond directly to your [request]({mentionComment.Permalink}) so I have posted my response here.\n\n{responseText}");
@@ -201,12 +228,12 @@ namespace IVAE.RedditBot
             databaseAccessor.SaveUploadLog(new UploadLog
             {
               Deleted = false,
-              DeleteKey = uploadResponse.DeleteHash,
+              DeleteKey = deleteKey,
               PostFullname = parentPost.Name,
               ReplyFullname = replyCommentName,
               RequestorUsername = mentionComment.Author,
               UploadDatetime = DateTime.UtcNow,
-              UploadDestination = "imgur"
+              UploadDestination = uploadDestination
             });
           }
           catch (Exception)
