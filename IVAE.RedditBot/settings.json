@@ -5,7 +5,7 @@
     "MaximumUploadFileSizeInMB": 25,
     "MaximumUploadFileDurationInSeconds": 30,
     "MinimumPostAgeInMinutes": 30,
-    "MinimumPostScore": 1,
+    "MinimumPostScore": 4,
     "MinimumPostingAccountAgeInDays": 30,
     "MinimumPostingAccountKarma": 1000,
     "MinimumSubredditSubscribers": 25000,

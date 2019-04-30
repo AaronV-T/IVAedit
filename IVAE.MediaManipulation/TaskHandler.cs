@@ -248,7 +248,7 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
-    public string CropImageOrVideo(string filePath, int x, int y, int width, int height)
+    public string CropImageOrVideo(string filePath, double x, double y, double width, double height)
     {
       OnChangeStep?.Invoke("Cropping");
 
@@ -323,6 +323,18 @@ namespace IVAE.MediaManipulation
       videoManipulator.OnProgress += ProgressUpdate;
       string outputPath = videoManipulator.ExtractAudioFromVideo(outputPathWithoutExtension, videoFilePath);
       videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
+    public string GetScreenshotFromVideo(string videoFilePath, string time)
+    {
+      OnChangeStep?.Invoke("Getting Screenshot");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Screenshot{GetCurrentTimeShort()}.jpg";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.GetScreenshot(outputPath, videoFilePath, time);
 
       return outputPath;
     }

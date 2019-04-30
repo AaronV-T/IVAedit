@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace IVAE.MediaManipulation
 {
   public class VideoManipulator
   {
+    const string FFMPEG_TIME_REGEX = @"^(\d+:)?(\d+:)?\d+(\.\d)?$";
+
     public event Action<float> OnProgress;
     private double currentVideoDurationInMS = -1;
     private int totalSteps = -1, currentStep = -1;
@@ -124,7 +127,7 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
-    public void CropVideo(string outputPath, string videoPath, int x, int y, int width, int height)
+    public void CropVideo(string outputPath, string videoPath, double x, double y, double width, double height)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
@@ -138,19 +141,14 @@ namespace IVAE.MediaManipulation
         throw new ArgumentOutOfRangeException(nameof(width));
       if (height <= 0)
         throw new ArgumentOutOfRangeException(nameof(height));
-      if ((x == 0 || y == 0) && x != y)
-        throw new ArgumentException("x and y must both be zero or both be positive.");
+
+      string xArg = (x < 1) ? $"in_w*{x}" : ((int)x).ToString();
+      string yArg = (y < 1) ? $"in_h*{y}" : ((int)y).ToString();
+      string widthArg = (width < 1 || (width == 1 && x == 0)) ? $"in_w*{width}" : ((int)width).ToString();
+      string heightArg = (height < 1 || (height == 1 && y == 0)) ? $"in_h*{height}" : ((int)height).ToString();
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
-
-      string xArg = string.Empty;
-      if (x > 0)
-        xArg = $":{x}";
-
-      string yArg = string.Empty;
-      if (y > 0)
-        yArg = $":{y}";
 
       FFmpegProcessRunner fpr = new FFmpegProcessRunner();
       fpr.OnDurationMessage += DurationMessageReceived;
@@ -158,7 +156,7 @@ namespace IVAE.MediaManipulation
       totalSteps = 1;
 
       currentStep = 1;
-      fpr.Run($"-i \"{videoPath}\" -vf \"crop={width}:{height}{xArg}{yArg}\" -codec:a copy \"{outputPath}\"");
+      fpr.Run($"-i \"{videoPath}\" -vf \"crop={widthArg}:{heightArg}:{xArg}:{yArg}\" -codec:a copy \"{outputPath}\"");
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;
@@ -188,6 +186,26 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
 
       return outputPath;
+    }
+
+    public void GetScreenshot(string outputPath, string videoPath, string time)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+      if (string.IsNullOrEmpty(time))
+        throw new ArgumentNullException(nameof(time));
+      if (!Regex.IsMatch(time, FFMPEG_TIME_REGEX))
+        throw new ArgumentException($"'{time}' is not a valid time.");
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      string args = $"-ss {time} -i \"{videoPath}\" -vframes 1 -q:v 2 \"{outputPath}\"";
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.Run(args);
     }
 
     public void MakeVideoFromGif(string outputPath, string gifPath)
@@ -343,6 +361,10 @@ namespace IVAE.MediaManipulation
         throw new ArgumentNullException(nameof(outputPath));
       if (string.IsNullOrEmpty(filePath))
         throw new ArgumentNullException(nameof(filePath));
+      if (!Regex.IsMatch(startTime, FFMPEG_TIME_REGEX))
+        throw new ArgumentException($"'{startTime}' is not a valid time.");
+      if (!Regex.IsMatch(endTime, FFMPEG_TIME_REGEX))
+        throw new ArgumentException($"'{endTime}' is not a valid time.");
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);

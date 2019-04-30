@@ -128,7 +128,7 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public void CropImage(string outputPath, string imagePath, int x, int y, int width, int height)
+    public void CropImage(string outputPath, string imagePath, double x, double y, double width, double height)
     {
       System.Drawing.Bitmap croppedImage;
       using (System.Drawing.Bitmap originalImage = new System.Drawing.Bitmap(imagePath))
@@ -277,7 +277,7 @@ namespace IVAE.MediaManipulation
       return bmp;
     }
 
-    public Bitmap GetCroppedImage(Bitmap image, int x, int y, int width, int height)
+    public Bitmap GetCroppedImage(Bitmap image, double x, double y, double width, double height)
     {
       if (x < 0)
         throw new ArgumentOutOfRangeException(nameof(x));
@@ -288,12 +288,17 @@ namespace IVAE.MediaManipulation
       if (height <= 0)
         throw new ArgumentOutOfRangeException(nameof(height));
 
-      if (image.Width < (x + width))
-        throw new Exception($"Image is not wide enough to crop. (Image Width: {image.Width}. Crop X: {x}. Crop Width: {width})");
-      if (image.Height < (y + height))
-        throw new Exception($"Image is not high enough to crop. (Image Height: {image.Height}. Crop Y: {y}. Crop Height: {height})");
+      int xCoord = (x < 1) ? (int)(image.Width * x) : (int)x;
+      int yCoord = (y < 1) ? (int)(image.Height * y) : (int)y;
+      int widthInPixels = (width < 1 || (width == 1 && x == 0)) ? (int)(image.Width * width) : (int)width;
+      int heightInPixels = (height < 1 || (height == 1 && y == 0)) ? (int)(image.Height * height) : (int)height;
 
-      System.Drawing.Rectangle rect = new System.Drawing.Rectangle(x, y, width, height);
+      if (image.Width < (xCoord + widthInPixels))
+        throw new Exception($"Image is not wide enough to crop. (Image Width: {image.Width}. Crop X: {xCoord}. Crop Width: {widthInPixels})");
+      if (image.Height < (yCoord + heightInPixels))
+        throw new Exception($"Image is not high enough to crop. (Image Height: {image.Height}. Crop Y: {yCoord}. Crop Height: {heightInPixels})");
+
+      Rectangle rect = new Rectangle(xCoord, yCoord, widthInPixels, heightInPixels);
 
       return image.Clone(rect, image.PixelFormat);
     }

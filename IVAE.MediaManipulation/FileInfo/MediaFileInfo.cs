@@ -14,9 +14,9 @@ namespace IVAE.MediaManipulation
     public FormatInfo Format;
 
     public double? Duration { get; private set; }
-
     public bool HasAudio { get { return FileHasAudio(this); } }
     public bool HasVideo { get { return FileHasVideo(this); } }
+    public bool IsValidMediaFile { get; private set; }
 
     public static bool FileHasAudio(string path)
     {
@@ -43,6 +43,12 @@ namespace IVAE.MediaManipulation
     public MediaFileInfo(string path)
     {
       string probeResult = new FFProbeProcessRunner().Run($"-v error -show_format -show_streams -print_format json \"{path}\"");
+
+      if (probeResult.Contains("Invalid data found when processing input"))
+        return;
+
+      IsValidMediaFile = true;
+
       Dictionary<string, object> dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(probeResult);
 
       List<AudioStreamInfo> audioStreams = new List<AudioStreamInfo>();
@@ -82,13 +88,6 @@ namespace IVAE.MediaManipulation
         if (videoStreamInfo.Duration != null && (Duration == null || videoStreamInfo.Duration > Duration))
           Duration = videoStreamInfo.Duration;
       }
-    }
-
-    private MediaFileInfo(FormatInfo format, IReadOnlyList<AudioStreamInfo> audioStreams, IReadOnlyList<VideoStreamInfo> videoStreams)
-    {
-      Format = format;
-      AudioStreams = audioStreams;
-      VideoStreams = videoStreams;
     }
   }
 }

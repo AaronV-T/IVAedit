@@ -149,6 +149,17 @@ namespace IVAeditGUI
           )
         },
         {
+          "GetScreenshot",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Time", new InputSetupInfo(ControlType.TextBox) }
+            },
+            GetScreenshot
+          )
+        },
+        {
           "Gif To Video",
           new OperationSetupInfo(null, GifToVideo)
         },
@@ -644,15 +655,15 @@ namespace IVAeditGUI
       string widthInputText = GetInputValue(OP_NAME, "Width");
       string heightInputText = GetInputValue(OP_NAME, "Height");
 
-      int x = 0, y = 0, width = 0, height = 0;
-      if (xCoordinateInputText != string.Empty && !int.TryParse(xCoordinateInputText, out x))
-        throw new ArgumentException($"X coordinate is not a valid integer.");
-      if (yCoordinateInputText != string.Empty && !int.TryParse(yCoordinateInputText, out y))
-        throw new ArgumentException($"Y coordinate is not a valid integer.");
-      if (widthInputText != string.Empty && !int.TryParse(widthInputText, out width))
-        throw new ArgumentException($"Width is not a valid integer.");
-      if (heightInputText != string.Empty && !int.TryParse(heightInputText, out height))
-        throw new ArgumentException($"Height is not a valid integer.");
+      double x = 0, y = 0, width = 0, height = 0;
+      if (xCoordinateInputText != string.Empty && !double.TryParse(xCoordinateInputText, out x))
+        throw new ArgumentException($"X coordinate is not a real number.");
+      if (yCoordinateInputText != string.Empty && !double.TryParse(yCoordinateInputText, out y))
+        throw new ArgumentException($"Y coordinate is not a real number.");
+      if (widthInputText != string.Empty && !double.TryParse(widthInputText, out width))
+        throw new ArgumentException($"Width is not a real number.");
+      if (heightInputText != string.Empty && !double.TryParse(heightInputText, out height))
+        throw new ArgumentException($"Height is not a real number.");
 
       System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
       openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
@@ -751,6 +762,37 @@ namespace IVAeditGUI
       });
 
       mainWindow.SetMessage($"Extracted audio file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
+    private async Task GetScreenshot()
+    {
+      const string OP_NAME = "GetScreenshot";
+      string timeInputText = GetInputValue(OP_NAME, "Time");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.GetScreenshotFromVideo(openFileDialog.FileName, timeInputText);
+      });
+
+      mainWindow.SetMessage($"Screenshot created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       System.Diagnostics.Process.Start(outputPath);
     }
 

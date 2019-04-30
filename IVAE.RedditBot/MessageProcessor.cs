@@ -118,7 +118,7 @@ namespace IVAE.RedditBot
           // Verify that the post is safe to process.
           if (!requestorIsWhitelisted && !await PostIsSafeToProcess(parentPost, true))
           {
-            await onFailedToProcessPost("Post is not safe.");
+            await onFailedToProcessPost("Post is not safe. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_limitations) for more information.");
             continue;
           }
 
@@ -130,13 +130,18 @@ namespace IVAE.RedditBot
           }
           catch (ArgumentException ex)
           {
-            await onFailedToProcessPost(ex.Message);
+            await onFailedToProcessPost($"{ex.Message}. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
+            continue;
+          }
+          catch (Exception)
+          {
+            await onFailedToProcessPost($"An error occurred while trying to parse commands. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
             continue;
           }
 
           if (commands == null || commands.Count == 0)
           {
-            await onFailedToProcessPost("No valid commands.");
+            await onFailedToProcessPost("No valid commands. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
             continue;
           }
           else if (commands.Any(command => commands.Count(cmd => cmd.GetType() == command.GetType()) > 1)) // This is O(n^2), consider something more efficient.
@@ -164,9 +169,35 @@ namespace IVAE.RedditBot
             System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
             string fileNameWithoutExtension = Guid.NewGuid().ToString();
             string filePathWithoutExtension = System.IO.Path.Combine(DOWNLOAD_DIR, fileNameWithoutExtension);
-            YoutubedlProcessRunner youtubedlProcessRunner = new YoutubedlProcessRunner();
-            List<string> downloadOutput = youtubedlProcessRunner.Run($"\"{mediaUrl.AbsoluteUri}\" --max-filesize {settings.FilterSettings.MaximumDownloadFileSizeInMB}m -o \"{filePathWithoutExtension}.%(ext)s\" -f mp4");
-            mediaFilePath = System.IO.Directory.GetFiles(DOWNLOAD_DIR, $"{fileNameWithoutExtension}*").SingleOrDefault();
+            string mediaUrlFileExtension = System.IO.Path.GetExtension(mediaUrl.AbsoluteUri).ToLower();
+            if (mediaUrlFileExtension == ".jpg" || mediaUrlFileExtension == ".png")
+            {
+              // Verify that the file is not too large.
+              if (!TryGetMediaFileSize(mediaUrl.AbsoluteUri, out long fileSize))
+              {
+                await onFailedToProcessPost("Failed to get media file size.");
+                continue;
+              }
+              else if (fileSize > settings.FilterSettings.MaximumDownloadFileSizeInMB * 10000000)
+              {
+                await onFailedToProcessPost("Media file too large.");
+                continue;
+              }
+
+              mediaFilePath = $"{filePathWithoutExtension}{mediaUrlFileExtension}";
+
+              using (System.Net.WebClient client = new System.Net.WebClient())
+              {
+                client.DownloadFile(mediaUrl, mediaFilePath);
+              }
+            }
+            else
+            {
+              YoutubedlProcessRunner youtubedlProcessRunner = new YoutubedlProcessRunner();
+              List<string> downloadOutput = youtubedlProcessRunner.Run($"\"{mediaUrl.AbsoluteUri}\" --max-filesize {settings.FilterSettings.MaximumDownloadFileSizeInMB}m -o \"{filePathWithoutExtension}.%(ext)s\" -f mp4");
+              mediaFilePath = System.IO.Directory.GetFiles(DOWNLOAD_DIR, $"{fileNameWithoutExtension}*").SingleOrDefault();
+            }
+            
             if (mediaFilePath == null)
             {
               await onFailedToProcessPost("Failed to download media file.");
@@ -179,12 +210,27 @@ namespace IVAE.RedditBot
             {
               string path = command.Execute(mediaFilePath);
               System.IO.File.Delete(mediaFilePath);
-              mediaFilePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(mediaFilePath), $"{System.IO.Path.GetFileNameWithoutExtension(mediaFilePath)}{System.IO.Path.GetExtension(path)}");
-              System.IO.File.Move(path, mediaFilePath);
+
+              if (System.IO.File.Exists(path))
+              {
+                mediaFilePath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(mediaFilePath), $"{System.IO.Path.GetFileNameWithoutExtension(mediaFilePath)}{System.IO.Path.GetExtension(path)}");
+                System.IO.File.Move(path, mediaFilePath);
+              }
+            }
+
+            if (!System.IO.File.Exists(mediaFilePath))
+            {
+              await onFailedToProcessPost($"Failed to create output file.");
+              continue;
             }
 
             double transformedFileSizeInMB = ((double)new System.IO.FileInfo(mediaFilePath).Length) / 1000000;
             MediaManipulation.MediaFileInfo transformedMFI = new MediaManipulation.MediaFileInfo(mediaFilePath);
+            if (!transformedMFI.IsValidMediaFile)
+            {
+              await onFailedToProcessPost($"Output file was broken.");
+              continue;
+            }
             if (transformedFileSizeInMB > settings.FilterSettings.MaximumUploadFileSizeInMB)
             {
               await onFailedToProcessPost($"Output file ({transformedFileSizeInMB.ToString("N2")}MB) can not be larger than {settings.FilterSettings.MaximumUploadFileSizeInMB}MB.");
@@ -196,7 +242,7 @@ namespace IVAE.RedditBot
               continue;
             }
 
-            // Upload altered media file.
+            // Upload transformed media file.
             byte[] mediaFileBytes = System.IO.File.ReadAllBytes(mediaFilePath);
             string deleteKey, uploadDestination, uploadLink;
             uploadDestination = "imgur";
@@ -219,8 +265,8 @@ namespace IVAE.RedditBot
             stopwatch.Stop();
             string responseText = $"[Direct File Link]({uploadLink})\n\n" +
               $"***\n" +
-              $"I am a bot in development. [More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback)  \n" +
-              $"Operations took {stopwatch.Elapsed.TotalMinutes.ToString("N2")} minutes. Original size: {((double)origFileSize / 1000000).ToString("N2")}MB, new size: {transformedFileSizeInMB.ToString("N2")}MB.";
+              $"{stopwatch.Elapsed.TotalMinutes.ToString("N2")} minutes. {((double)origFileSize / 1000000).ToString("N2")}MB -> {transformedFileSizeInMB.ToString("N2")}MB.  \n" +
+              $"I am a bot in development. [More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback)";
             string replyCommentName = await redditClient.PostComment(mentionComment.Name, responseText);
             if (replyCommentName == null)
               replyCommentName = await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to repond directly to your [request]({mentionComment.Permalink}) so I have posted my response here.\n\n{responseText}");
@@ -246,7 +292,8 @@ namespace IVAE.RedditBot
         }
         catch (Exception ex)
         {
-          Console.WriteLine($"Exception occurred when processing post. {ex}");
+          Console.WriteLine($"Exception occurred while processing post.");
+          Console.WriteLine(ex.ToString());
         }
       }
     }

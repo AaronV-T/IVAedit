@@ -84,6 +84,9 @@ namespace IVAE.RedditBot
             case "-REVERSE":
               commands.Add(new ReverseCommand(parameters));
               break;
+            case "-SCREENSHOT":
+              commands.Add(new ScreenshotCommand(parameters));
+              break;
             case "-STABILIZE":
               commands.Add(new StabilizeCommand(parameters));
               break;
@@ -157,7 +160,7 @@ namespace IVAE.RedditBot
 
   public class CropCommand : IVAECommand
   {
-    private int x, y, width, height;
+    private double x, y, width, height;
 
     public CropCommand(Dictionary<string, string> parameters)
     {
@@ -166,16 +169,16 @@ namespace IVAE.RedditBot
         switch (kvp.Key.ToUpper())
         {
           case "X":
-            x = int.Parse(kvp.Value);
+            x = double.Parse(kvp.Value);
             break;
           case "Y":
-            y = int.Parse(kvp.Value);
+            y = double.Parse(kvp.Value);
             break;
           case "WIDTH":
-            width = int.Parse(kvp.Value);
+            width = double.Parse(kvp.Value);
             break;
           case "HEIGHT":
-            height = int.Parse(kvp.Value);
+            height = double.Parse(kvp.Value);
             break;
         }
       }
@@ -279,6 +282,29 @@ namespace IVAE.RedditBot
     public string Execute(string filePath)
     {
       return new MediaManipulation.TaskHandler().Reverse(filePath);
+    }
+  }
+
+  public class ScreenshotCommand : IVAECommand
+  {
+    string time;
+
+    public ScreenshotCommand(Dictionary<string, string> parameters)
+    {
+      foreach (var kvp in parameters)
+      {
+        switch (kvp.Key.ToUpper())
+        {
+          case "TIME":
+            time = kvp.Value;
+            break;
+        }
+      }
+    }
+
+    public string Execute(string filePath)
+    {
+      return new MediaManipulation.TaskHandler().GetScreenshotFromVideo(filePath, time);
     }
   }
 
