@@ -22,13 +22,13 @@ namespace IVAE.RedditBot
       this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
 
-    public async Task SanitizePosts()
+    public async Task CleanupPosts(DateTime earliestTimeToCleanup)
     {
       List<UploadLog> uploadLogs = databaseAccessor.GetAllUploadLogs();
 
       foreach (UploadLog uploadLog in uploadLogs)
       {
-        if (uploadLog.Deleted || uploadLog.UploadDatetime < DateTime.UtcNow.AddDays(-7))
+        if (uploadLog.Deleted || uploadLog.UploadDatetime < earliestTimeToCleanup)
           continue;
 
         List<RedditThing> postAndReply = await redditClient.GetInfoOfCommentsAndLinks("all", new List<string> { uploadLog.PostFullname, uploadLog.ReplyFullname });

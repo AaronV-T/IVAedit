@@ -47,7 +47,7 @@ namespace IVAE.RedditBot
               if (splitParamString.Count > 2)
                 throw new ArgumentException($"Invalid parameter '{paramString}'.");
 
-              string value = string.Empty;
+              string value = null;
               if (splitParamString.Count == 2)
                 value = splitParamString[1];
 
@@ -69,6 +69,9 @@ namespace IVAE.RedditBot
             case "-EXTRACTAUDIO":
               commands.Add(new ExtractAudioCommand(parameters));
               break;
+            case "-FLIP":
+              commands.Add(new FlipCommand(parameters));
+              break;
             case "-GIFTOVIDEO":
               commands.Add(new GifToVideoCommand(parameters));
               break;
@@ -83,6 +86,9 @@ namespace IVAE.RedditBot
               break;
             case "-REVERSE":
               commands.Add(new ReverseCommand(parameters));
+              break;
+            case "-ROTATE":
+              commands.Add(new RotateCommand(parameters));
               break;
             case "-SCREENSHOT":
               commands.Add(new ScreenshotCommand(parameters));
@@ -203,6 +209,32 @@ namespace IVAE.RedditBot
     }
   }
 
+  public class FlipCommand : IVAECommand
+  {
+    private bool horizontal, vertical;
+
+    public FlipCommand(Dictionary<string, string> parameters)
+    {
+      foreach (var kvp in parameters)
+      {
+        switch (kvp.Key.ToUpper())
+        {
+          case "HORIZONTAL":
+            horizontal = string.IsNullOrEmpty(kvp.Value) ? false : bool.Parse(kvp.Value);
+            break;
+          case "VERTICAL":
+            vertical = string.IsNullOrEmpty(kvp.Value) ? false : bool.Parse(kvp.Value);
+            break;
+        }
+      }
+    }
+
+    public string Execute(string filePath)
+    {
+      return new MediaManipulation.TaskHandler().FlipImageOrVideo(filePath, horizontal, vertical);
+    }
+  }
+
   public class GifToVideoCommand : IVAECommand
   {
     public GifToVideoCommand(Dictionary<string, string> parameters)
@@ -282,6 +314,29 @@ namespace IVAE.RedditBot
     public string Execute(string filePath)
     {
       return new MediaManipulation.TaskHandler().Reverse(filePath);
+    }
+  }
+
+  public class RotateCommand : IVAECommand
+  {
+    private bool counterClockwise;
+
+    public RotateCommand(Dictionary<string, string> parameters)
+    {
+      foreach (var kvp in parameters)
+      {
+        switch (kvp.Key.ToUpper())
+        {
+          case "COUNTERCLOCKWISE":
+            counterClockwise = string.IsNullOrEmpty(kvp.Value) ? false : bool.Parse(kvp.Value);
+            break;
+        }
+      }
+    }
+
+    public string Execute(string filePath)
+    {
+      return new MediaManipulation.TaskHandler().RotateImageOrVideo(filePath, counterClockwise);
     }
   }
 

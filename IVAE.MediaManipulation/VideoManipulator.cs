@@ -156,7 +156,7 @@ namespace IVAE.MediaManipulation
       totalSteps = 1;
 
       currentStep = 1;
-      fpr.Run($"-i \"{videoPath}\" -vf \"crop={widthArg}:{heightArg}:{xArg}:{yArg}\" -codec:a copy \"{outputPath}\"");
+      fpr.Run($"-i \"{videoPath}\" -vf \"crop={widthArg}:{heightArg}:{xArg}:{yArg}\" -c:a copy \"{outputPath}\"");
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;
@@ -186,6 +186,38 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
 
       return outputPath;
+    }
+
+    public void FlipVideo(string outputPath, string videoPath, bool horizontal, bool vertical)
+    {
+      if (string.IsNullOrWhiteSpace(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrWhiteSpace(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      string args;
+      if (horizontal && vertical)
+        args = "hflip,vflip";
+      else if (horizontal)
+        args = "hflip";
+      else if (vertical)
+        args = "vflip";
+      else
+        throw new ArgumentException("Either horizontal or vertical must be true.");
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf {args} -c:a copy \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
     public void GetScreenshot(string outputPath, string videoPath, string time)
@@ -315,6 +347,30 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
+    public void RotateVideo(string outputPath, string videoPath, bool counterClockwise)
+    {
+      if (string.IsNullOrWhiteSpace(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrWhiteSpace(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      string transposeArg = counterClockwise ? "2" : "1";
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf transpose={transposeArg} -c:a copy \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     public void ScaleVideo(string outputPath, string videoPath, float scaleFactor)
     {
       if (scaleFactor <= 0)
@@ -361,9 +417,9 @@ namespace IVAE.MediaManipulation
         throw new ArgumentNullException(nameof(outputPath));
       if (string.IsNullOrEmpty(filePath))
         throw new ArgumentNullException(nameof(filePath));
-      if (!Regex.IsMatch(startTime, FFMPEG_TIME_REGEX))
+      if (!string.IsNullOrEmpty(startTime) && !Regex.IsMatch(startTime, FFMPEG_TIME_REGEX))
         throw new ArgumentException($"'{startTime}' is not a valid time.");
-      if (!Regex.IsMatch(endTime, FFMPEG_TIME_REGEX))
+      if (!string.IsNullOrEmpty(endTime) && !Regex.IsMatch(endTime, FFMPEG_TIME_REGEX))
         throw new ArgumentException($"'{endTime}' is not a valid time.");
 
       if (System.IO.File.Exists(outputPath))
@@ -424,8 +480,6 @@ namespace IVAE.MediaManipulation
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;
-
-      Console.WriteLine($"-i \"{videoPath}\" -vf \"scale={widthArg}:{heightArg}\" \"{outputPath}\"");
     }
 
     private void TimeMessageReceived(double time)

@@ -327,6 +327,33 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
+    public string FlipImageOrVideo(string filePath, bool horizontal, bool vertical)
+    {
+      OnChangeStep?.Invoke("Flipping");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Flipped{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+
+      MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
+      if (mediaType == MediaType.IMAGE)
+      {
+        ImageManipulator imageManipulator = new ImageManipulator();
+        imageManipulator.OnProgress += ProgressUpdate;
+        imageManipulator.FlipImage(outputPath, filePath, horizontal, vertical);
+        imageManipulator.OnProgress -= ProgressUpdate;
+      }
+      else if (mediaType == MediaType.VIDEO)
+      {
+        VideoManipulator videoManipulator = new VideoManipulator();
+        videoManipulator.OnProgress += ProgressUpdate;
+        videoManipulator.FlipVideo(outputPath, filePath, horizontal, vertical);
+        videoManipulator.OnProgress -= ProgressUpdate;
+      }
+      else
+        throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
+
+      return outputPath;
+    }
+
     public string GetScreenshotFromVideo(string videoFilePath, string time)
     {
       OnChangeStep?.Invoke("Getting Screenshot");
@@ -445,11 +472,39 @@ namespace IVAE.MediaManipulation
       {
         VideoManipulator videoManipulator = new VideoManipulator();
         videoManipulator.OnProgress += ProgressUpdate;
-        videoManipulator.ReverseVideo(outputPath, filePath);
+        videoManipulator.
+ReverseVideo(outputPath, filePath);
         videoManipulator.OnProgress -= ProgressUpdate;
       }
       else
         throw new NotSupportedException($"Media type of '{filePath}' not supported for reversing.");
+
+      return outputPath;
+    }
+
+    public string RotateImageOrVideo(string filePath, bool counterClockwise)
+    {
+      OnChangeStep?.Invoke("Rotating");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(filePath)}\{System.IO.Path.GetFileNameWithoutExtension(filePath)}_Rotated{GetCurrentTimeShort()}{System.IO.Path.GetExtension(filePath)}";
+
+      MediaType mediaType = MediaTypeHelper.GetMediaTypeFromFileName(filePath);
+      if (mediaType == MediaType.IMAGE)
+      {
+        ImageManipulator imageManipulator = new ImageManipulator();
+        imageManipulator.OnProgress += ProgressUpdate;
+        imageManipulator.RotateImage(outputPath, filePath, counterClockwise);
+        imageManipulator.OnProgress -= ProgressUpdate;
+      }
+      else if (mediaType == MediaType.VIDEO)
+      {
+        VideoManipulator videoManipulator = new VideoManipulator();
+        videoManipulator.OnProgress += ProgressUpdate;
+        videoManipulator.RotateVideo(outputPath, filePath, counterClockwise);
+        videoManipulator.OnProgress -= ProgressUpdate;
+      }
+      else
+        throw new NotImplementedException($"Unsupported file extension '{System.IO.Path.GetExtension(filePath)}'.");
 
       return outputPath;
     }

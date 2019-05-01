@@ -44,6 +44,7 @@ namespace IVAE.RedditBot
         MessageProcessor messageProcessor = new MessageProcessor(databaseAccessor, imgurClient, redditClient, settings);
         CleanupManager cleanupManager = new CleanupManager(databaseAccessor, imgurClient, redditClient, settings);
 
+        int shortCleanups = 0;
         while (!exit)
         {
           int processLoopsToRunBetweenCleanups = 5;
@@ -75,8 +76,21 @@ namespace IVAE.RedditBot
           if (exit)
             break;
 
-          Console.WriteLine("Cleaning up posts...");
-          await cleanupManager.SanitizePosts();
+          DateTime cleanupCutoff;
+          if (shortCleanups < 10)
+          {
+            cleanupCutoff = DateTime.UtcNow.AddHours(-3);
+            shortCleanups++;
+          }
+          else
+          {
+            cleanupCutoff = DateTime.UtcNow.AddDays(-7);
+            shortCleanups = 0;
+          }
+          
+          Console.WriteLine($"Cleaning up posts since {cleanupCutoff.ToShortDateString()} {cleanupCutoff.ToShortTimeString()}...");
+          await cleanupManager.CleanupPosts(cleanupCutoff);
+            
         }
       }
       catch (Exception ex)

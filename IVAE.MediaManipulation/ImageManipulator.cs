@@ -9,6 +9,7 @@ using Emgu.CV;
 using Emgu.CV.Features2D;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
+using System.Drawing.Imaging;
 
 namespace IVAE.MediaManipulation
 {
@@ -130,13 +131,13 @@ namespace IVAE.MediaManipulation
 
     public void CropImage(string outputPath, string imagePath, double x, double y, double width, double height)
     {
-      System.Drawing.Bitmap croppedImage;
-      using (System.Drawing.Bitmap originalImage = new System.Drawing.Bitmap(imagePath))
+      Bitmap croppedImage;
+      using (Bitmap originalImage = new Bitmap(imagePath))
       {
         croppedImage = GetCroppedImage(originalImage, x, y, width, height);
       }
 
-      croppedImage.Save(outputPath);
+      croppedImage.SaveAndInferFormat(outputPath);
       croppedImage.Dispose();
     }
 
@@ -166,6 +167,25 @@ namespace IVAE.MediaManipulation
         DrawTextOnImage(image, text, fontSize);
 
         image.Write(imagePath);
+      }
+    }
+
+    public void FlipImage(string outputPath, string imagePath, bool horizontal, bool vertical)
+    {
+      using (Bitmap image = new Bitmap(imagePath))
+      {
+        RotateFlipType rotateFlipType;
+        if (horizontal && vertical)
+          rotateFlipType = RotateFlipType.RotateNoneFlipXY;
+        else if (horizontal)
+          rotateFlipType = RotateFlipType.RotateNoneFlipX;
+        else if (vertical)
+          rotateFlipType = RotateFlipType.RotateNoneFlipY;
+        else
+          throw new ArgumentException("Either horizontal or vertical must be true.");
+
+        image.RotateFlip(rotateFlipType);
+        image.SaveAndInferFormat(outputPath);
       }
     }
 
@@ -463,6 +483,16 @@ namespace IVAE.MediaManipulation
 
         //ImageMagick.ImageOptimizers.GifOptimizer gifOptimizer = new ImageMagick.ImageOptimizers.GifOptimizer(); does nothing
         //gifOptimizer.LosslessCompress(outputPath);
+      }
+    }
+
+    public void RotateImage(string outputPath, string imagePath, bool counterClockwise)
+    {
+      using (Bitmap image = new Bitmap(imagePath))
+      {
+        RotateFlipType rotateFlipType = counterClockwise ? RotateFlipType.Rotate270FlipNone : RotateFlipType.Rotate90FlipNone;
+        image.RotateFlip(rotateFlipType);
+        image.SaveAndInferFormat(outputPath);
       }
     }
   }

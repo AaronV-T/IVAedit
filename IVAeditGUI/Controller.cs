@@ -149,7 +149,19 @@ namespace IVAeditGUI
           )
         },
         {
-          "GetScreenshot",
+          "Flip",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Horizontal", new InputSetupInfo(ControlType.CheckBox) },
+              { "Vertical", new InputSetupInfo(ControlType.CheckBox) }
+            },
+            Flip
+          )
+        },
+        {
+          "Get Screenshot",
           new OperationSetupInfo
           (
             new Dictionary<string, InputSetupInfo>
@@ -187,6 +199,17 @@ namespace IVAeditGUI
         {
           "Reverse",
           new OperationSetupInfo(null, Reverse)
+        },
+        {
+          "Rotate",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Counter Clockwise", new InputSetupInfo(ControlType.CheckBox) }
+            },
+            Rotate
+          )
         },
         {
           "Stabilize Video",
@@ -765,6 +788,41 @@ namespace IVAeditGUI
       System.Diagnostics.Process.Start(outputPath);
     }
 
+    private async Task Flip()
+    {
+      const string OP_NAME = "Flip";
+      string horizontalInputText = GetInputValue(OP_NAME, "Horizontal");
+      string verticalInputText = GetInputValue(OP_NAME, "Vertical");
+
+      bool horizontal = Convert.ToBoolean(horizontalInputText);
+      bool vertical = Convert.ToBoolean(verticalInputText);
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select image or video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.FlipImageOrVideo(openFileDialog.FileName, horizontal, vertical);
+      });
+
+      mainWindow.SetMessage($"Rotated file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
     private async Task GetScreenshot()
     {
       const string OP_NAME = "GetScreenshot";
@@ -794,6 +852,34 @@ namespace IVAeditGUI
 
       mainWindow.SetMessage($"Screenshot created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       System.Diagnostics.Process.Start(outputPath);
+    }
+
+    private async Task GifToVideo()
+    {
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = "GIF File|*.gif";
+      openFileDialog.Title = "Select GIF.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string gifvPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        gifvPath = taskHandler.ConvertGifToVideo(openFileDialog.FileName);
+      });
+
+      mainWindow.SetMessage($"Gifv created '{gifvPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(gifvPath);
     }
 
     private async Task ImagesToGif()
@@ -864,34 +950,6 @@ namespace IVAeditGUI
 
       mainWindow.SetMessage($"Gif created '{gifPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       System.Diagnostics.Process.Start(gifPath);
-    }
-
-    private async Task GifToVideo()
-    {
-      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
-      openFileDialog.Filter = "GIF File|*.gif";
-      openFileDialog.Title = "Select GIF.";
-      openFileDialog.Multiselect = false;
-
-      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-      {
-        mainWindow.SetMessage("Canceled.");
-        return;
-      }
-
-      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
-      taskHandler.OnChangeStep += ChangeCurrentStep;
-      taskHandler.OnProgressUpdate += ProgressUpdate;
-
-      DateTime start = DateTime.Now;
-      string gifvPath = null;
-      await Task.Factory.StartNew(() =>
-      {
-        gifvPath = taskHandler.ConvertGifToVideo(openFileDialog.FileName);
-      });
-
-      mainWindow.SetMessage($"Gifv created '{gifvPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
-      System.Diagnostics.Process.Start(gifvPath);
     }
 
     private async Task NormalizeVolume()
@@ -1017,6 +1075,39 @@ namespace IVAeditGUI
       });
 
       mainWindow.SetMessage($"Reversed file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
+    private async Task Rotate()
+    {
+      const string OP_NAME = "Rotate";
+      string ccInputText = GetInputValue(OP_NAME, "Counter Clockwise");
+
+      bool counterClockwise = Convert.ToBoolean(ccInputText);
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Image or Video Files|{GetImageFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select image or video file.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.RotateImageOrVideo(openFileDialog.FileName, counterClockwise);
+      });
+
+      mainWindow.SetMessage($"Rotated file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       System.Diagnostics.Process.Start(outputPath);
     }
 
