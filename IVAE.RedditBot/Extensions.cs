@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IVAE.RedditBot.DTO;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,19 @@ namespace IVAE.RedditBot
 {
   public static class Extensions
   {
+    public static string GetCommandTextFromMention(this RedditThing mention, string myUsername)
+    {
+      List<string> messageBodyLines = mention.Body.Split(new string[] { "  \n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+      foreach (string line in messageBodyLines)
+      {
+        int mentionIndex = line.Trim().IndexOf($"u/{myUsername}");
+        if (mentionIndex == 0 || mentionIndex == 1)
+          return line;
+      }
+
+      return null;
+    }
+
     public static DateTime UnixTimeToDateTime(this long redditTime)
     {
       return DateTimeOffset.FromUnixTimeSeconds(redditTime).DateTime;

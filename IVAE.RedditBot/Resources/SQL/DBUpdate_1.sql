@@ -19,7 +19,7 @@ GO
 IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND  TABLE_NAME = 'UploadLogs'))
 BEGIN
 CREATE TABLE [dbo].[UploadLogs](
-	[id] [int] IDENTITY(1,1) NOT NULL,
+	[id] [uniqueidentifier] NOT NULL,
 	[post_fullname] [varchar](max) NOT NULL,
 	[requestor_username] [varchar](50) NOT NULL,
 	[reply_fullname] [varchar](max) NOT NULL,

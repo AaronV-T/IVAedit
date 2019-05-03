@@ -11,13 +11,15 @@ namespace IVAE.RedditBot
   {
     private const string DOWNLOAD_DIR = "AutomatedFileDownloads";
 
+    private CleanupManager cleanupManager;
     private DatabaseAccessor databaseAccessor;
     private ImgurClient imgurClient;
     private RedditClient redditClient;
     private Settings settings;
 
-    public MessageProcessor(DatabaseAccessor databaseAccessor, ImgurClient imgurClient, RedditClient redditClient, Settings settings)
+    public MessageProcessor(CleanupManager cleanupManager, DatabaseAccessor databaseAccessor, ImgurClient imgurClient, RedditClient redditClient, Settings settings)
     {
+      this.cleanupManager = cleanupManager ?? throw new ArgumentNullException(nameof(cleanupManager));
       this.databaseAccessor = databaseAccessor ?? throw new ArgumentNullException(nameof(databaseAccessor));
       this.imgurClient = imgurClient ?? throw new ArgumentNullException(nameof(imgurClient));
       this.redditClient = redditClient ?? throw new ArgumentNullException(nameof(redditClient));
@@ -31,70 +33,100 @@ namespace IVAE.RedditBot
 
       try
       {
-        Console.WriteLine("Getting unread messages...");
-        List<RedditThing> messages = await redditClient.GetUnreadMessages();
+        Console.WriteLine("Getting unread messages.");
+        List<RedditThing> unreadMessages = await redditClient.GetUnreadMessages();
 
-        Console.WriteLine("Filtering out messages that aren't comments with user mentions...");
-        List<RedditThing> mentionComments = await FilterMentionMessagesAndMarkRestRead(messages);
+        List<string> messageNamesToMarkRead = new List<string>();
+        List<RedditThing> commandMessages = new List<RedditThing>();
+        List<RedditThing> requestComments = new List<RedditThing>();
+        foreach (RedditThing message in unreadMessages)
+        {
+          if (message.Kind == "t4" && message.Subject.ToLower() == "command")
+            commandMessages.Add(message);
+          else if (message.Kind == "t1" && message.GetCommandTextFromMention(redditClient.Username) != null)
+            requestComments.Add(message);
+          else
+            messageNamesToMarkRead.Add(message.Name);
+        }
 
-        Console.WriteLine($"Getting parents of {mentionComments.Count} comments...");
-        Dictionary<RedditThing, RedditThing> commentsWithParents = await GetParentsOfComments(mentionComments);
+        if (messageNamesToMarkRead.Count > 0)
+        {
+          Console.WriteLine($"Ignoring {messageNamesToMarkRead.Count} messages.");
+          await redditClient.MarkMessagesAsRead(messageNamesToMarkRead);
+        }
 
-        Console.WriteLine($"Processing {commentsWithParents.Count} posts...");
-        await ProcessPosts(commentsWithParents);
+        if (commandMessages.Count > 0)
+        {
+          Console.WriteLine($"Processing {commandMessages.Count} command messages.");
+          await ProcessCommands(commandMessages);
+        }
+
+        if (requestComments.Count > 0)
+        {
+          Console.WriteLine($"Processing {requestComments.Count} request comments.");
+          await ProcessRequests(requestComments);
+        }
       }
       catch (Exception ex)
       {
         Console.WriteLine(ex.ToString());
       }
 
-      //if (System.IO.Directory.Exists(DOWNLOAD_DIR))
-        //System.IO.Directory.Delete(DOWNLOAD_DIR, true);
+      if (System.IO.Directory.Exists(DOWNLOAD_DIR))
+        System.IO.Directory.Delete(DOWNLOAD_DIR, true);
     }
 
-    private async Task<List<RedditThing>> FilterMentionMessagesAndMarkRestRead(List<RedditThing> unreadMessages)
+
+    private async Task ProcessCommands(List<RedditThing> commands)
     {
-      List<string> messagesToMarkRead = new List<string>();
-      List<RedditThing> messagesToProcess = new List<RedditThing>();
-      foreach (RedditThing message in unreadMessages)
+      foreach (RedditThing command in commands)
       {
-        int mentionIndex = message.Body.Trim().IndexOf($"u/{redditClient.Username}");
-        if (message.Kind == "t4" || mentionIndex < 0 || mentionIndex > 1)
-        {
-          messagesToMarkRead.Add(message.Name);
+        await redditClient.MarkMessagesAsRead(new List<string> { command.Name });
+
+        List<string> splitCommandText = command.Body.Trim().Split().ToList();
+
+        if (splitCommandText.Count < 1 || string.IsNullOrEmpty(splitCommandText[0]))
           continue;
+
+        string commandText = splitCommandText[0];
+
+        switch(commandText.ToLower())
+        {
+          case "delete":
+            if (splitCommandText.Count < 2)
+              break;
+
+            UploadLog uploadLog = databaseAccessor.GetUploadLog(new Guid(splitCommandText[1]));
+            if (uploadLog == null)
+              break;
+
+            if (settings.Administrators.Contains(command.Author) || uploadLog.RequestorUsername == command.Author)
+              await cleanupManager.DeleteUpload(uploadLog, $"Requested by /u/{command.Author}");
+
+            break;
         }
-
-        messagesToProcess.Add(message);
       }
-
-      await redditClient.MarkMessagesAsRead(messagesToMarkRead);
-
-      return messagesToProcess;
     }
 
-    private async Task<Dictionary<RedditThing, RedditThing>> GetParentsOfComments(List<RedditThing> comments)
+    private async Task ProcessRequests(List<RedditThing> requests)
     {
-      Dictionary<RedditThing, RedditThing> messagesWithParents = new Dictionary<RedditThing, RedditThing>();
-      foreach (RedditThing message in comments)
-        messagesWithParents.Add(message, await redditClient.GetInfoOfCommentOrLink(message.Subreddit, message.ParentId));
+      // Get parent of each request.
+      Dictionary<RedditThing, RedditThing> requestsWithParents = new Dictionary<RedditThing, RedditThing>();
+      foreach (RedditThing message in requests)
+        requestsWithParents.Add(message, await redditClient.GetInfoOfCommentOrLink(message.Subreddit, message.ParentId));
 
-      return messagesWithParents;
-    }
-
-    private async Task ProcessPosts(Dictionary<RedditThing, RedditThing> commentsWithParents)
-    {
-      foreach(var kvp in commentsWithParents)
+      // Process each request.
+      foreach (var kvp in requestsWithParents)
       {
         try
         {
           RedditThing mentionComment = kvp.Key;
           RedditThing parentPost = kvp.Value;
 
-          bool requestorIsWhitelisted = settings.RequestorWhitelist.Contains(mentionComment.Author);
+          bool requestorIsAdmin = settings.Administrators.Contains(mentionComment.Author);
 
           // Verify that the post is old enough.
-          if (!requestorIsWhitelisted && parentPost.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Now.ToUniversalTime().AddMinutes(-settings.FilterSettings.MinimumPostAgeInMinutes))
+          if (!requestorIsAdmin && parentPost.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Now.ToUniversalTime().AddMinutes(-settings.FilterSettings.MinimumPostAgeInMinutes))
           {
             Console.WriteLine($"Temporarily skipping {mentionComment.Name}: Post is too recent. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
@@ -111,12 +143,12 @@ namespace IVAE.RedditBot
 
           Func<string, Task> onFailedToProcessPost = async (reason) =>
           {
-            Console.WriteLine($"Skipping {mentionComment.Name}: {reason}. ({mentionComment.Author}: '{mentionComment.Body}')");
+            Console.WriteLine($"Skipping {mentionComment.Name}: {reason} ({mentionComment.Author}: '{mentionComment.Body}')");
             await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to process your [request](https://reddit.com{mentionComment.Context}). Reason: {reason}");
           };
 
           // Verify that the post is safe to process.
-          if (!requestorIsWhitelisted && !await PostIsSafeToProcess(parentPost, true))
+          if (!requestorIsAdmin && !await PostIsSafeToProcess(parentPost, true))
           {
             await onFailedToProcessPost("Post is not safe. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_limitations) for more information.");
             continue;
@@ -126,22 +158,37 @@ namespace IVAE.RedditBot
           List<IVAECommand> commands;
           try
           {
-             commands = IVAECommandFactory.CreateCommands(mentionComment.Body.Split('\n')[0]);
+            commands = IVAECommandFactory.CreateCommands(mentionComment.GetCommandTextFromMention(redditClient.Username));
+
+            IVAECommand speedupCommand = commands.FirstOrDefault(c => c.GetType() == typeof(AdjustSpeedCommand) && ((AdjustSpeedCommand)c).FrameRate > 1);
+            if (speedupCommand != null)
+            {
+              commands.Remove(speedupCommand);
+              commands.Insert(0, speedupCommand);
+            }
+
+            IVAECommand trimCommand = commands.FirstOrDefault(c => c.GetType() == typeof(TrimCommand));
+            if (trimCommand != null)
+            {
+              commands.Remove(trimCommand);
+              commands.Insert(0, trimCommand);
+            }
           }
           catch (ArgumentException ex)
           {
-            await onFailedToProcessPost($"{ex.Message}. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
+            await onFailedToProcessPost($"{ex.Message}  \nSee [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
             continue;
           }
-          catch (Exception)
+          catch (Exception ex)
           {
-            await onFailedToProcessPost($"An error occurred while trying to parse commands. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
+            Console.WriteLine(ex.ToString());
+            await onFailedToProcessPost($"An error occurred while trying to parse commands.  \nSee [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
             continue;
           }
 
           if (commands == null || commands.Count == 0)
           {
-            await onFailedToProcessPost("No valid commands. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
+            await onFailedToProcessPost("No valid commands.  \nSee [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
             continue;
           }
           else if (commands.Any(command => commands.Count(cmd => cmd.GetType() == command.GetType()) > 1)) // This is O(n^2), consider something more efficient.
@@ -154,7 +201,7 @@ namespace IVAE.RedditBot
           Uri mediaUrl = GetMediaUrlFromPost(parentPost);
           if (mediaUrl == null || string.IsNullOrWhiteSpace(mediaUrl.AbsoluteUri))
           {
-            await onFailedToProcessPost("Invalid media URL.");
+            await onFailedToProcessPost("Invalid media URL. Remember to reply directly to the link/comment that has the media file.");
             continue;
           }
 
@@ -200,7 +247,7 @@ namespace IVAE.RedditBot
             
             if (mediaFilePath == null)
             {
-              await onFailedToProcessPost("Failed to download media file.");
+              await onFailedToProcessPost("Failed to download media file. (The file may have been too big.)");
               continue;
             }
 
@@ -263,18 +310,21 @@ namespace IVAE.RedditBot
 
             // Respond with link.
             stopwatch.Stop();
+            Guid uploadId = Guid.NewGuid();
+
             string responseText = $"[Direct File Link]({uploadLink})\n\n" +
               $"***\n" +
               $"{stopwatch.Elapsed.TotalMinutes.ToString("N2")} minutes. {((double)origFileSize / 1000000).ToString("N2")}MB -> {transformedFileSizeInMB.ToString("N2")}MB.  \n" +
-              $"I am a bot in development. [More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback)";
+              $"[More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback) | [Delete](https://www.reddit.com/message/compose/?to=IVAEbot&subject=Command&message=delete%20{uploadId.ToString()})(Requestor Only)";
             string replyCommentName = await redditClient.PostComment(mentionComment.Name, responseText);
             if (replyCommentName == null)
               replyCommentName = await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to repond directly to your [request]({mentionComment.Permalink}) so I have posted my response here.\n\n{responseText}");
 
-            databaseAccessor.SaveUploadLog(new UploadLog
+            databaseAccessor.InsertUploadLog(new UploadLog
             {
               Deleted = false,
               DeleteKey = deleteKey,
+              Id = uploadId,
               PostFullname = parentPost.Name,
               ReplyFullname = replyCommentName,
               RequestorUsername = mentionComment.Author,
@@ -373,7 +423,7 @@ namespace IVAE.RedditBot
     {
       Tuple<string, DateTime> mostRecentFallbackReplyPost = databaseAccessor.GetMostRecentFallbackRepliesLink();
       string fallbackRepliesLinkName;
-      if (mostRecentFallbackReplyPost != null && mostRecentFallbackReplyPost.Item2 > DateTime.Today.AddDays(-7))
+      if (mostRecentFallbackReplyPost != null && mostRecentFallbackReplyPost.Item2 > DateTime.Today.AddDays(-6))
         fallbackRepliesLinkName = mostRecentFallbackReplyPost.Item1;
       else
       {

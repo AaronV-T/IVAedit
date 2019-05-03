@@ -17,7 +17,7 @@ namespace IVAE.RedditBot
     {
       List<IVAECommand> commands = new List<IVAECommand>();
 
-      List<string> splitText = text.Split().ToList();
+      List<string> splitText = text.Split(new string[] { " ", "\n" }, StringSplitOptions.RemoveEmptyEntries ).ToList();
 
       if (splitText.Count == 0)
         return null;
@@ -44,7 +44,7 @@ namespace IVAE.RedditBot
             foreach (string paramString in parameterStrings)
             {
               List<string> splitParamString = paramString.Split('=').ToList();
-              if (splitParamString.Count > 2)
+              if (splitParamString.Count > 2 || string.IsNullOrEmpty(splitParamString[0]))
                 throw new ArgumentException($"Invalid parameter '{paramString}'.");
 
               string value = null;
@@ -114,7 +114,8 @@ namespace IVAE.RedditBot
 
   public class AdjustSpeedCommand : IVAECommand
   {
-    private float playbackRate, frameRate;
+    public float PlaybackRate { get; private set; }
+    public float FrameRate { get; private set; }
 
     public AdjustSpeedCommand(Dictionary<string, string> parameters)
     {
@@ -123,12 +124,12 @@ namespace IVAE.RedditBot
         switch (kvp.Key.ToUpper())
         {
           case "FRAMERATE":
-            frameRate = float.Parse(kvp.Value);
+            FrameRate = float.Parse(kvp.Value);
             break;
-          case "PLAYBACKRATE":
-            playbackRate = float.Parse(kvp.Value);
-            if (playbackRate < 0.125 || playbackRate > 8)
-              throw new ArgumentException("Playback rate not a valid value.");
+          case "speed":
+            PlaybackRate = float.Parse(kvp.Value);
+            if (PlaybackRate < 0.125 || PlaybackRate > 8)
+              throw new ArgumentException("Speed not a valid value.");
 
             break;
         }
@@ -137,13 +138,13 @@ namespace IVAE.RedditBot
 
     public string Execute(string filePath)
     {
-      return new MediaManipulation.TaskHandler().AdjustAudioOrVideoPlaybackSpeed(filePath, playbackRate, frameRate);
+      return new MediaManipulation.TaskHandler().AdjustAudioOrVideoPlaybackSpeed(filePath, PlaybackRate, FrameRate);
     }
   }
 
   public class AdjustVolumeCommand : IVAECommand
   {
-    private string volume;
+    public string Volume { get; private set; }
 
     public AdjustVolumeCommand(Dictionary<string, string> parameters)
     {
@@ -152,7 +153,7 @@ namespace IVAE.RedditBot
         switch (kvp.Key.ToUpper())
         {
           case "VOLUME":
-            volume = kvp.Value;
+            Volume = kvp.Value;
             break;
         }
       }
@@ -160,7 +161,7 @@ namespace IVAE.RedditBot
 
     public string Execute(string filePath)
     {
-      return new MediaManipulation.TaskHandler().AdjustVolume(filePath, volume);
+      return new MediaManipulation.TaskHandler().AdjustVolume(filePath, Volume);
     }
   }
 
@@ -220,10 +221,10 @@ namespace IVAE.RedditBot
         switch (kvp.Key.ToUpper())
         {
           case "HORIZONTAL":
-            horizontal = string.IsNullOrEmpty(kvp.Value) ? false : bool.Parse(kvp.Value);
+            horizontal = string.IsNullOrEmpty(kvp.Value) ? true : bool.Parse(kvp.Value);
             break;
           case "VERTICAL":
-            vertical = string.IsNullOrEmpty(kvp.Value) ? false : bool.Parse(kvp.Value);
+            vertical = string.IsNullOrEmpty(kvp.Value) ? true : bool.Parse(kvp.Value);
             break;
         }
       }
@@ -328,7 +329,7 @@ namespace IVAE.RedditBot
         switch (kvp.Key.ToUpper())
         {
           case "COUNTERCLOCKWISE":
-            counterClockwise = string.IsNullOrEmpty(kvp.Value) ? false : bool.Parse(kvp.Value);
+            counterClockwise = string.IsNullOrEmpty(kvp.Value) ? true : bool.Parse(kvp.Value);
             break;
         }
       }
@@ -342,6 +343,7 @@ namespace IVAE.RedditBot
 
   public class ScreenshotCommand : IVAECommand
   {
+    bool end;
     string time;
 
     public ScreenshotCommand(Dictionary<string, string> parameters)
@@ -350,6 +352,9 @@ namespace IVAE.RedditBot
       {
         switch (kvp.Key.ToUpper())
         {
+          case "END":
+            end = string.IsNullOrEmpty(kvp.Value) ? true : bool.Parse(kvp.Value);
+            break;
           case "TIME":
             time = kvp.Value;
             break;
@@ -359,7 +364,7 @@ namespace IVAE.RedditBot
 
     public string Execute(string filePath)
     {
-      return new MediaManipulation.TaskHandler().GetScreenshotFromVideo(filePath, time);
+      return new MediaManipulation.TaskHandler().GetScreenshotFromVideo(filePath, time, end);
     }
   }
 

@@ -220,7 +220,23 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
-    public void GetScreenshot(string outputPath, string videoPath, string time)
+    public void GetScreenshotAtEnd(string outputPath, string videoPath)
+    {
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      MediaFileInfo mediaFileInfo = new MediaFileInfo(videoPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.Run($"-i \"{videoPath}\" -vf \"select='eq(n,{mediaFileInfo.FrameCount - 1})'\" -vframes 1 -q:v 2 \"{outputPath}\"");
+    }
+
+    public void GetScreenshotAtTime(string outputPath, string videoPath, string time)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
@@ -234,10 +250,8 @@ namespace IVAE.MediaManipulation
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
 
-      string args = $"-ss {time} -i \"{videoPath}\" -vframes 1 -q:v 2 \"{outputPath}\"";
-
       FFmpegProcessRunner fpr = new FFmpegProcessRunner();
-      fpr.Run(args);
+      fpr.Run($"-ss {time} -i \"{videoPath}\" -vframes 1 -q:v 2 \"{outputPath}\"");
     }
 
     public void MakeVideoFromGif(string outputPath, string gifPath)

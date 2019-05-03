@@ -354,15 +354,22 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
-    public string GetScreenshotFromVideo(string videoFilePath, string time)
+    public string GetScreenshotFromVideo(string videoFilePath, string time, bool end = false)
     {
+      if (!string.IsNullOrEmpty(time) && end)
+        throw new ArgumentException("Can't set both time and end.");
+
       OnChangeStep?.Invoke("Getting Screenshot");
 
       string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Screenshot{GetCurrentTimeShort()}.jpg";
 
       VideoManipulator videoManipulator = new VideoManipulator();
-      videoManipulator.GetScreenshot(outputPath, videoFilePath, time);
 
+      if (end)
+        videoManipulator.GetScreenshotAtEnd(outputPath, videoFilePath);
+      else
+        videoManipulator.GetScreenshotAtTime(outputPath, videoFilePath, time);
+        
       return outputPath;
     }
 
@@ -556,8 +563,6 @@ ReverseVideo(outputPath, filePath);
 
     public object Test(string[] fileNames)
     {
-      new VideoManipulator().Test(fileNames[0]);
-
       var mfi = new MediaFileInfo(fileNames[0]);
       foreach(var l in mfi.AudioStreams)
       {

@@ -14,6 +14,7 @@ namespace IVAE.MediaManipulation
     public FormatInfo Format;
 
     public double? Duration { get; private set; }
+    public int? FrameCount { get; private set; }
     public bool HasAudio { get { return FileHasAudio(this); } }
     public bool HasVideo { get { return FileHasVideo(this); } }
     public bool IsValidMediaFile { get; private set; }
@@ -87,6 +88,8 @@ namespace IVAE.MediaManipulation
       {
         if (videoStreamInfo.Duration != null && (Duration == null || videoStreamInfo.Duration > Duration))
           Duration = videoStreamInfo.Duration;
+        if (videoStreamInfo.NbFrames != null && (FrameCount == null || videoStreamInfo.NbFrames > FrameCount))
+          FrameCount = (int)videoStreamInfo.NbFrames;
       }
     }
   }

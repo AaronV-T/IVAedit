@@ -48,7 +48,7 @@ namespace IVAE.RedditBot
       }
     }
 
-    private async Task DeleteUpload(UploadLog uploadLog, string reason)
+    public async Task DeleteUpload(UploadLog uploadLog, string reason)
     {
       Console.WriteLine($"Deleting UploadLog with ID '{uploadLog.Id}' (reply '{uploadLog.ReplyFullname}')");
 
@@ -60,7 +60,7 @@ namespace IVAE.RedditBot
       uploadLog.Deleted = true;
       uploadLog.DeleteDatetime = DateTime.UtcNow;
       uploadLog.DeleteReason = reason;
-      databaseAccessor.SaveUploadLog(uploadLog);
+      databaseAccessor.UpdateUploadLog(uploadLog);
 
       Console.WriteLine($"Deleted post '{uploadLog.ReplyFullname}'.");
     }

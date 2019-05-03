@@ -41,8 +41,9 @@ namespace IVAE.RedditBot
         DatabaseAccessor databaseAccessor = new DatabaseAccessor(System.Configuration.ConfigurationManager.ConnectionStrings["IVAeditDB"].ConnectionString);
         databaseAccessor.EnsureDatabaseIsUpToDate();
 
-        MessageProcessor messageProcessor = new MessageProcessor(databaseAccessor, imgurClient, redditClient, settings);
         CleanupManager cleanupManager = new CleanupManager(databaseAccessor, imgurClient, redditClient, settings);
+        MessageProcessor messageProcessor = new MessageProcessor(cleanupManager, databaseAccessor, imgurClient, redditClient, settings);
+        
 
         int shortCleanups = 0;
         while (!exit)
@@ -87,8 +88,8 @@ namespace IVAE.RedditBot
             cleanupCutoff = DateTime.UtcNow.AddDays(-7);
             shortCleanups = 0;
           }
-          
-          Console.WriteLine($"Cleaning up posts since {cleanupCutoff.ToShortDateString()} {cleanupCutoff.ToShortTimeString()}...");
+
+          Console.WriteLine($"Cleaning up posts since {cleanupCutoff.ToLocalTime().ToShortDateString()} {cleanupCutoff.ToLocalTime().ToShortTimeString()}...");
           await cleanupManager.CleanupPosts(cleanupCutoff);
             
         }

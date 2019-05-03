@@ -1,7 +1,10 @@
 {
+  "Administrators": [
+    "TheTollski"
+  ],
   "FallbackReplySubreddit": "IVAEbot",
   "FilterSettings": {
-    "MaximumDownloadFileSizeInMB": 25,
+    "MaximumDownloadFileSizeInMB": 50,
     "MaximumUploadFileSizeInMB": 25,
     "MaximumUploadFileDurationInSeconds": 30,
     "MinimumPostAgeInMinutes": 30,
@@ -13,9 +16,6 @@
     "ProcessNSFWContent": false,
     "ProcessPostsInNonPublicSubreddits": false
   },
-  "RequestorWhitelist": [
-    "TheTollski"
-  ],
   "RequestorBlacklist": [
 
   ],

@@ -184,10 +184,12 @@ namespace IVAE.RedditBot
         List<string> ratelimitResetHeaders = response.Headers.GetValues("x-ratelimit-reset").ToList();
         if (ratelimitResetHeaders != null && ratelimitResetHeaders.Count > 0)
           ratelimitResetTime = DateTime.Now.AddSeconds(int.Parse(ratelimitResetHeaders[0]));
+
+        Debug.WriteLine($"RateLimitRemaining: {ratelimitRemaining}.");
       }
       catch (Exception)
       {
-        throw new Exception($"Could not get rate limit headers from Reddit response. Response headers: {JsonConvert.SerializeObject(response.Headers, Formatting.Indented)}.");
+        throw new Exception($"Could not get rate limit headers from Reddit response.\n\nResponse Headers: {JsonConvert.SerializeObject(response.Headers, Formatting.Indented)}\n\nResponse Content: { JsonConvert.SerializeObject(response.Content, Formatting.Indented) }");
       }
     }
 

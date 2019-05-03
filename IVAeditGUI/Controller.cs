@@ -166,6 +166,7 @@ namespace IVAeditGUI
           (
             new Dictionary<string, InputSetupInfo>
             {
+              { "End", new InputSetupInfo(ControlType.CheckBox) },
               { "Time", new InputSetupInfo(ControlType.TextBox) }
             },
             GetScreenshot
@@ -825,8 +826,11 @@ namespace IVAeditGUI
 
     private async Task GetScreenshot()
     {
-      const string OP_NAME = "GetScreenshot";
+      const string OP_NAME = "Get Screenshot";
+      string endInputText = GetInputValue(OP_NAME, "End");
       string timeInputText = GetInputValue(OP_NAME, "Time");
+      
+      bool end = Convert.ToBoolean(endInputText);
 
       System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
       openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
@@ -847,7 +851,7 @@ namespace IVAeditGUI
       string outputPath = null;
       await Task.Factory.StartNew(() =>
       {
-        outputPath = taskHandler.GetScreenshotFromVideo(openFileDialog.FileName, timeInputText);
+        outputPath = taskHandler.GetScreenshotFromVideo(openFileDialog.FileName, timeInputText, end);
       });
 
       mainWindow.SetMessage($"Screenshot created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
@@ -1370,7 +1374,8 @@ namespace IVAeditGUI
       if (inputGrid == null)
         throw new Exception($"Could not find input grid '{inputSettingName}'.");
 
-      ControlType inputControlType = operationSetups[operation].InputInfo[inputName].ControlType;
+      OperationSetupInfo operationSetupInfo = operationSetups[operation];
+      ControlType inputControlType = operationSetupInfo.InputInfo[inputName].ControlType;
       if (inputControlType == ControlType.CheckBox)
         return ((CheckBox)inputGrid.Children[1]).IsChecked.ToString();
       else if (inputControlType == ControlType.ComboBox)
