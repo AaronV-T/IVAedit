@@ -128,6 +128,48 @@ namespace IVAE.RedditBot
       }
     }
 
+    public string GetBlacklistedSubreddit(string subreddit)
+    {
+      using (IDbConnection dbConnection = this.GetOpenDbConnection())
+      using (IDbCommand dbCommand = dbConnection.CreateCommand())
+      {
+        dbCommand.CommandText = "SELECT subreddit FROM BlacklistedSubreddits WHERE UPPER(subreddit) = UPPER(@subreddit)";
+
+        dbCommand.AddParameter("@subreddit", subreddit);
+
+        using (IDataReader dataReader = dbCommand.ExecuteReader())
+        {
+          if (dataReader.Read())
+          {
+            return dataReader.GetString(0);
+          }
+        }
+      }
+
+      return null;
+    }
+
+    public string GetBlacklistedUser(string username)
+    {
+      using (IDbConnection dbConnection = this.GetOpenDbConnection())
+      using (IDbCommand dbCommand = dbConnection.CreateCommand())
+      {
+        dbCommand.CommandText = "SELECT username FROM BlacklistedUsers WHERE UPPER(username) = UPPER(@username)";
+
+        dbCommand.AddParameter("@username", username);
+
+        using (IDataReader dataReader = dbCommand.ExecuteReader())
+        {
+          if (dataReader.Read())
+          {
+            return dataReader.GetString(0);
+          }
+        }
+      }
+
+      return null;
+    }
+
     public UploadLog GetUploadLog(Guid uploadLogId)
     {
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
@@ -162,19 +204,6 @@ namespace IVAE.RedditBot
       return null;
     }
 
-    private static int? GetSchemaVersion(IDbConnection dbConnection)
-    {
-      using (IDbCommand dbCommand = dbConnection.CreateCommand())
-      {
-        dbCommand.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'DBSettings'";
-        if ((int)dbCommand.ExecuteScalar() == 0)
-          return null;
-
-        dbCommand.CommandText = "SELECT SettingValue From DBSettings WHERE SettingKey = 'SchemaVersion'";
-        return int.Parse((string)dbCommand.ExecuteScalar());
-      }
-    }
-
     public void InsertUploadLog(UploadLog uploadLog)
     {
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
@@ -192,6 +221,34 @@ namespace IVAE.RedditBot
         dbCommand.AddParameter("@requestor_username", uploadLog.RequestorUsername);
         dbCommand.AddParameter("@upload_datetime", uploadLog.UploadDatetime);
         dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
+
+        dbCommand.ExecuteNonQuery();
+      }
+    }
+
+    public void InsertBlacklistedSubreddit(string subreddit, string bannedBy)
+    {
+      using (IDbConnection dbConnection = this.GetOpenDbConnection())
+      using (IDbCommand dbCommand = dbConnection.CreateCommand())
+      {
+        dbCommand.CommandText = "INSERT INTO BlacklistedSubreddits (subreddit, banned_by) VALUES (@subreddit, @banned_by)";
+
+        dbCommand.AddParameter("@subreddit", subreddit);
+        dbCommand.AddParameter("@banned_by", bannedBy);
+
+        dbCommand.ExecuteNonQuery();
+      }
+    }
+
+    public void InsertBlacklistedUser(string username, string bannedBy)
+    {
+      using (IDbConnection dbConnection = this.GetOpenDbConnection())
+      using (IDbCommand dbCommand = dbConnection.CreateCommand())
+      {
+        dbCommand.CommandText = "INSERT INTO BlacklistedUsers (username, banned_by) VALUES (@username, @banned_by)";
+
+        dbCommand.AddParameter("@username", username);
+        dbCommand.AddParameter("@banned_by", bannedBy);
 
         dbCommand.ExecuteNonQuery();
       }
@@ -216,6 +273,19 @@ namespace IVAE.RedditBot
         dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
 
         dbCommand.ExecuteNonQuery();
+      }
+    }
+
+    private static int? GetSchemaVersion(IDbConnection dbConnection)
+    {
+      using (IDbCommand dbCommand = dbConnection.CreateCommand())
+      {
+        dbCommand.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'DBSettings'";
+        if ((int)dbCommand.ExecuteScalar() == 0)
+          return null;
+
+        dbCommand.CommandText = "SELECT SettingValue From DBSettings WHERE SettingKey = 'SchemaVersion'";
+        return int.Parse((string)dbCommand.ExecuteScalar());
       }
     }
 

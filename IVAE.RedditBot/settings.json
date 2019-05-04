@@ -15,11 +15,5 @@
     "ProcessEditedComments": false,
     "ProcessNSFWContent": false,
     "ProcessPostsInNonPublicSubreddits": false
-  },
-  "RequestorBlacklist": [
-
-  ],
-  "SubredditBlacklist": [
-
-  ]
+  }
 }

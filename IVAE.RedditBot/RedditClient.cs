@@ -31,6 +31,21 @@ namespace IVAE.RedditBot
 
     public string Username { get { return username; } }
 
+    public async Task BlockUser(string username)
+    {
+      Dictionary<string, string> data = new Dictionary<string, string>();
+      data.Add("api_type", "json");
+      data.Add("name", username);
+
+      HttpContent content = new FormUrlEncodedContent(data);
+      await WaitUntilARequestCanBeMade();
+      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/block_user", content);
+      SetRatelimitInfo(response);
+      string responseContent = await response.Content.ReadAsStringAsync();
+
+      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+    }
+
     public async Task DeletePost(string fullName)
     {
       Dictionary<string, string> data = new Dictionary<string, string>();

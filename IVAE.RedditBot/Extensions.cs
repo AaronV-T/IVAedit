@@ -9,6 +9,14 @@ namespace IVAE.RedditBot
 {
   public static class Extensions
   {
+    public static void AddParameter(this System.Data.IDbCommand dbCommand, string name, object value)
+    {
+      System.Data.IDbDataParameter parameter = dbCommand.CreateParameter();
+      parameter.ParameterName = name;
+      parameter.Value = value;
+      dbCommand.Parameters.Add(parameter);
+    }
+
     public static string GetCommandTextFromMention(this RedditThing mention, string myUsername)
     {
       List<string> messageBodyLines = mention.Body.Split(new string[] { "  \n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -25,14 +33,6 @@ namespace IVAE.RedditBot
     public static DateTime UnixTimeToDateTime(this long redditTime)
     {
       return DateTimeOffset.FromUnixTimeSeconds(redditTime).DateTime;
-    }
-
-    public static void AddParameter (this System.Data.IDbCommand dbCommand, string name, object value)
-    {
-      System.Data.IDbDataParameter parameter = dbCommand.CreateParameter();
-      parameter.ParameterName = name;
-      parameter.Value = value;
-      dbCommand.Parameters.Add(parameter);
     }
   }
 }

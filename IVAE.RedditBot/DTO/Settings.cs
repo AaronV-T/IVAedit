@@ -11,8 +11,6 @@ namespace IVAE.RedditBot.DTO
     public List<string> Administrators { get; set; }
     public string FallbackReplySubreddit { get; set; }
     public FilterSettings FilterSettings { get; set; }
-    public List<string> RequestorBlacklist { get; set; }
-    public List<string> SubredditBlacklist { get; set; }
   }
 
   public class FilterSettings

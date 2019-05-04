@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using IVAE.RedditBot.DTO;
 
@@ -88,10 +89,46 @@ namespace IVAE.RedditBot
         if (splitCommandText.Count < 1 || string.IsNullOrEmpty(splitCommandText[0]))
           continue;
 
-        string commandText = splitCommandText[0];
-
-        switch(commandText.ToLower())
+        switch(splitCommandText[0].ToLower())
         {
+          case "ban":
+          case "blacklist":
+            if (!settings.Administrators.Contains(command.Author))
+              break;
+
+            StringBuilder replyText = new StringBuilder();
+            for (int i = 1; i < splitCommandText.Count; i++)
+            {
+              if (Regex.IsMatch(splitCommandText[i], @"^/?r/\w+"))
+              {
+                string subreddit = splitCommandText[i].Substring(splitCommandText[1].LastIndexOf("/") + 1);
+                if (databaseAccessor.GetBlacklistedSubreddit(subreddit) == null)
+                {
+                  databaseAccessor.InsertBlacklistedSubreddit(subreddit, command.Author);
+                  replyText.Append($"/r/{subreddit} has been blacklisted.  \n");
+                }
+                else
+                  replyText.Append($"/r/{subreddit} is already blacklisted.  \n");
+
+              }
+              else if (Regex.IsMatch(splitCommandText[i], @"^/?u/\w+"))
+              {
+                string username = splitCommandText[i].Substring(splitCommandText[1].LastIndexOf("/") + 1);
+                if (databaseAccessor.GetBlacklistedUser(username) == null)
+                {
+                  databaseAccessor.InsertBlacklistedUser(username, command.Author);
+                  await redditClient.BlockUser(username);
+                  replyText.Append($"/u/{username} has been blacklisted.  \n");
+                }
+                else
+                  replyText.Append($"/u/{username} is already blacklisted.  \n");
+              }
+            }
+
+            if (!string.IsNullOrEmpty(replyText.ToString()))
+              await redditClient.PostComment(command.Name, replyText.ToString());
+
+            break;
           case "delete":
             if (splitCommandText.Count < 2)
               break;
@@ -135,7 +172,7 @@ namespace IVAE.RedditBot
           await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
 
           // Verify that the requestor isn't blacklisted.
-          if (settings.RequestorBlacklist.Contains(mentionComment.Author))
+          if (databaseAccessor.GetBlacklistedUser(mentionComment.Author) != null)
           {
             Console.WriteLine($"Skipping {mentionComment.Name}: Requestor is blacklisted. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
@@ -410,6 +447,7 @@ namespace IVAE.RedditBot
       else if (post.Kind == "t3")
       {
         if (!filterSettings.ProcessNSFWContent && (post.Over18 == null || post.Over18.Value)) return false; // Link is flagged NSFW.
+        if (databaseAccessor.GetBlacklistedSubreddit(post.Subreddit) != null) return false; // Subreddit is blacklisted.
         if (post.SubredditSubscribers == null || post.SubredditSubscribers < filterSettings.MinimumSubredditSubscribers) return false; // Link is in a subreddit that's too small.
         if (!filterSettings.ProcessPostsInNonPublicSubreddits && (post.SubredditType == null || post.SubredditType != "public")) return false; // Link is in a subreddit that's not public.
 

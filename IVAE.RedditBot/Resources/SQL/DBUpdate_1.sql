@@ -47,3 +47,27 @@ CREATE TABLE [dbo].[FallbackRepliesLinks](
 ))
 END
 GO
+
+IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND  TABLE_NAME = 'BlacklistedUsers'))
+BEGIN
+CREATE TABLE [dbo].[BlacklistedUsers](
+	[username] [varchar](50) NOT NULL,
+  [banned_by] [varchar](50) NOT NULL,
+ CONSTRAINT [PK_BlacklistedUsers] PRIMARY KEY CLUSTERED 
+(
+	[username] ASC
+))
+END
+GO
+
+IF (NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND  TABLE_NAME = 'BlacklistedSubreddits'))
+BEGIN
+CREATE TABLE [dbo].[BlacklistedSubreddits](
+	[subreddit] [varchar](50) NOT NULL,
+  [banned_by] [varchar](50) NOT NULL,
+ CONSTRAINT [PK_BlacklistedSubreddits] PRIMARY KEY CLUSTERED 
+(
+	[subreddit] ASC
+))
+END
+GO
