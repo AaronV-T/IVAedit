@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using IVAE.RedditBot.DTO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace IVAE.RedditBot
 {
@@ -26,16 +27,16 @@ namespace IVAE.RedditBot
       this.httpClient.DefaultRequestHeaders.Add("Authorization", $"Client-ID {clientID}");
     }
 
-    public async Task<bool?> Delete(string deleteHash)
+    public async Task<bool> Delete(string deleteHash)
     {
       HttpResponseMessage response = await httpClient.DeleteAsync($"{BASE_URL}/3/image/{deleteHash}");
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Imgur Delete Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
       Dictionary<string, object> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseContent);
       if (!deserializedResponse.ContainsKey("success"))
-        return null;
+        return false;
 
       return (bool)deserializedResponse["success"];
     }
@@ -65,7 +66,7 @@ namespace IVAE.RedditBot
       HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/3/upload", requestContent);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      System.Diagnostics.Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Imgur Upload Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
       Dictionary<string, object> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string,object>>(responseContent);
       if (!deserializedResponse.ContainsKey("success") || !(bool)deserializedResponse["success"])

@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using IVAE.RedditBot.DTO;
+using Serilog;
 
 namespace IVAE.RedditBot
 {
@@ -34,7 +35,7 @@ namespace IVAE.RedditBot
 
       try
       {
-        Console.WriteLine("Getting unread messages.");
+        Log.Information("Getting unread messages.");
         List<RedditThing> unreadMessages = await redditClient.GetUnreadMessages();
 
         List<string> messageNamesToMarkRead = new List<string>();
@@ -52,25 +53,25 @@ namespace IVAE.RedditBot
 
         if (messageNamesToMarkRead.Count > 0)
         {
-          Console.WriteLine($"Ignoring {messageNamesToMarkRead.Count} messages.");
+          Log.Information($"Ignoring {messageNamesToMarkRead.Count} messages.");
           await redditClient.MarkMessagesAsRead(messageNamesToMarkRead);
         }
 
         if (commandMessages.Count > 0)
         {
-          Console.WriteLine($"Processing {commandMessages.Count} command messages.");
+          Log.Information($"Processing {commandMessages.Count} command messages.");
           await ProcessCommands(commandMessages);
         }
 
         if (requestComments.Count > 0)
         {
-          Console.WriteLine($"Processing {requestComments.Count} request comments.");
+          Log.Information($"Processing {requestComments.Count} request comments.");
           await ProcessRequests(requestComments);
         }
       }
       catch (Exception ex)
       {
-        Console.WriteLine(ex.ToString());
+        Log.Error(ex, $"Exception caught in {nameof(MessageProcessor)}.ProcessUnreadMessages.");
       }
 
       if (System.IO.Directory.Exists(DOWNLOAD_DIR))
@@ -165,7 +166,7 @@ namespace IVAE.RedditBot
           // Verify that the post is old enough.
           if (!requestorIsAdmin && parentPost.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Now.ToUniversalTime().AddMinutes(-settings.FilterSettings.MinimumPostAgeInMinutes))
           {
-            Console.WriteLine($"Temporarily skipping {mentionComment.Name}: Post is too recent. ({mentionComment.Author}: '{mentionComment.Body}')");
+            Log.Information($"Temporarily skipping {mentionComment.Name}: Post is too recent. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
           }
 
@@ -174,13 +175,13 @@ namespace IVAE.RedditBot
           // Verify that the requestor isn't blacklisted.
           if (databaseAccessor.GetBlacklistedUser(mentionComment.Author) != null)
           {
-            Console.WriteLine($"Skipping {mentionComment.Name}: Requestor is blacklisted. ({mentionComment.Author}: '{mentionComment.Body}')");
+            Log.Information($"Skipping {mentionComment.Name}: Requestor is blacklisted. ({mentionComment.Author}: '{mentionComment.Body}')");
             continue;
           }
 
           Func<string, Task> onFailedToProcessPost = async (reason) =>
           {
-            Console.WriteLine($"Skipping {mentionComment.Name}: {reason} ({mentionComment.Author}: '{mentionComment.Body}')");
+            Log.Information($"Skipping {mentionComment.Name}: {reason} ({mentionComment.Author}: '{mentionComment.Body}')");
             await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to process your [request](https://reddit.com{mentionComment.Context}). Reason: {reason}");
           };
 
@@ -218,7 +219,7 @@ namespace IVAE.RedditBot
           }
           catch (Exception ex)
           {
-            Console.WriteLine(ex.ToString());
+            Log.Warning(ex.ToString());
             await onFailedToProcessPost($"An error occurred while trying to parse commands.  \nSee [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
             continue;
           }
@@ -359,13 +360,14 @@ namespace IVAE.RedditBot
 
             databaseAccessor.InsertUploadLog(new UploadLog
             {
-              Deleted = false,
-              DeleteKey = deleteKey,
               Id = uploadId,
               PostFullname = parentPost.Name,
+              ReplyDeleted = false,
               ReplyFullname = replyCommentName,
               RequestorUsername = mentionComment.Author,
               UploadDatetime = DateTime.UtcNow,
+              UploadDeleted = false,
+              UploadDeleteKey = deleteKey,
               UploadDestination = uploadDestination
             });
           }
@@ -379,8 +381,7 @@ namespace IVAE.RedditBot
         }
         catch (Exception ex)
         {
-          Console.WriteLine($"Exception occurred while processing post.");
-          Console.WriteLine(ex.ToString());
+          Log.Error(ex, "Exception occurred while processing a request.");
         }
       }
     }

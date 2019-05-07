@@ -99,7 +99,7 @@ namespace IVAE.RedditBot
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
       using (IDbCommand dbCommand = dbConnection.CreateCommand())
       {
-        dbCommand.CommandText = "SELECT deleted, delete_datetime, delete_reason, delete_key, id, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination FROM UploadLogs";
+        dbCommand.CommandText = "SELECT delete_datetime, delete_reason, id, post_fullname, reply_deleted, reply_fullname, requestor_username, upload_datetime, upload_deleted, upload_delete_key, upload_destination FROM UploadLogs";
 
         using (IDataReader dataReader = dbCommand.ExecuteReader())
         {
@@ -109,15 +109,16 @@ namespace IVAE.RedditBot
           {
             int col = 0;
             UploadLog uploadLog = new UploadLog();
-            uploadLog.Deleted = dataReader.GetBoolean(col++);
             if (!dataReader.IsDBNull(col++)) uploadLog.DeleteDatetime = dataReader.GetDateTime(col - 1);
             if (!dataReader.IsDBNull(col++)) uploadLog.DeleteReason = dataReader.GetString(col - 1);
-            uploadLog.DeleteKey = dataReader.GetString(col++);
             uploadLog.Id = dataReader.GetGuid(col++);
-            uploadLog.PostFullname= dataReader.GetString(col++);
+            uploadLog.PostFullname = dataReader.GetString(col++);
+            uploadLog.ReplyDeleted = dataReader.GetBoolean(col++);
             uploadLog.ReplyFullname = dataReader.GetString(col++);
             uploadLog.RequestorUsername = dataReader.GetString(col++);
             uploadLog.UploadDatetime = dataReader.GetDateTime(col++);
+            uploadLog.UploadDeleted = dataReader.GetBoolean(col++);
+            uploadLog.UploadDeleteKey = dataReader.GetString(col++);
             uploadLog.UploadDestination = dataReader.GetString(col++);
 
             uploadLogs.Add(uploadLog);
@@ -175,7 +176,7 @@ namespace IVAE.RedditBot
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
       using (IDbCommand dbCommand = dbConnection.CreateCommand())
       {
-        dbCommand.CommandText = "SELECT deleted, delete_datetime, delete_reason, delete_key, id, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination FROM UploadLogs WHERE id = @id";
+        dbCommand.CommandText = "SELECT delete_datetime, delete_reason, id, post_fullname, reply_deleted, reply_fullname, requestor_username, upload_datetime, upload_deleted, upload_delete_key, upload_destination FROM UploadLogs WHERE id = @id";
 
         dbCommand.AddParameter("@id", uploadLogId);
 
@@ -185,15 +186,16 @@ namespace IVAE.RedditBot
           {
             int col = 0;
             UploadLog uploadLog = new UploadLog();
-            uploadLog.Deleted = dataReader.GetBoolean(col++);
             if (!dataReader.IsDBNull(col++)) uploadLog.DeleteDatetime = dataReader.GetDateTime(col - 1);
             if (!dataReader.IsDBNull(col++)) uploadLog.DeleteReason = dataReader.GetString(col - 1);
-            uploadLog.DeleteKey = dataReader.GetString(col++);
             uploadLog.Id = dataReader.GetGuid(col++);
             uploadLog.PostFullname = dataReader.GetString(col++);
+            uploadLog.ReplyDeleted = dataReader.GetBoolean(col++);
             uploadLog.ReplyFullname = dataReader.GetString(col++);
             uploadLog.RequestorUsername = dataReader.GetString(col++);
             uploadLog.UploadDatetime = dataReader.GetDateTime(col++);
+            uploadLog.UploadDeleted = dataReader.GetBoolean(col++);
+            uploadLog.UploadDeleteKey = dataReader.GetString(col++);
             uploadLog.UploadDestination = dataReader.GetString(col++);
 
             return uploadLog;
@@ -209,17 +211,18 @@ namespace IVAE.RedditBot
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
       using (IDbCommand dbCommand = dbConnection.CreateCommand())
       {
-        dbCommand.CommandText = "INSERT INTO UploadLogs (deleted, delete_datetime, delete_reason, delete_key, id, post_fullname, reply_fullname, requestor_username, upload_datetime, upload_destination) VALUES (@deleted, @delete_datetime, @delete_reason, @delete_key, @id, @post_fullname, @reply_fullname, @requestor_username, @upload_datetime, @upload_destination)";
+        dbCommand.CommandText = "INSERT INTO UploadLogs (delete_datetime, delete_reason, id, post_fullname, reply_deleted, reply_fullname, requestor_username, upload_datetime, upload_deleted, upload_delete_key, upload_destination) VALUES (@delete_datetime, @delete_reason, @id, @post_fullname, @reply_deleted, @reply_fullname, @requestor_username, @upload_datetime, @upload_deleted, @upload_delete_key, @upload_destination)";
 
-        dbCommand.AddParameter("@deleted", uploadLog.Deleted);
         dbCommand.AddParameter("@delete_datetime", (object)uploadLog.DeleteDatetime ?? DBNull.Value);
         dbCommand.AddParameter("@delete_reason", (object)uploadLog.DeleteReason ?? DBNull.Value);
-        dbCommand.AddParameter("@delete_key", uploadLog.DeleteKey);
         dbCommand.AddParameter("@id", uploadLog.Id);
         dbCommand.AddParameter("@post_fullname", uploadLog.PostFullname);
+        dbCommand.AddParameter("@reply_deleted", uploadLog.ReplyDeleted);
         dbCommand.AddParameter("@reply_fullname", uploadLog.ReplyFullname);
         dbCommand.AddParameter("@requestor_username", uploadLog.RequestorUsername);
         dbCommand.AddParameter("@upload_datetime", uploadLog.UploadDatetime);
+        dbCommand.AddParameter("@upload_deleted", uploadLog.UploadDeleted);
+        dbCommand.AddParameter("@upload_delete_key", uploadLog.UploadDeleteKey);
         dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
 
         dbCommand.ExecuteNonQuery();
@@ -259,17 +262,18 @@ namespace IVAE.RedditBot
       using (IDbConnection dbConnection = this.GetOpenDbConnection())
       using (IDbCommand dbCommand = dbConnection.CreateCommand())
       {
-        dbCommand.CommandText = "UPDATE UploadLogs SET deleted = @deleted, delete_datetime = @delete_datetime, delete_reason = @delete_reason, delete_key = @delete_key, post_fullname = @post_fullname, reply_fullname = @reply_fullname, requestor_username = @requestor_username, upload_datetime = @upload_datetime, upload_destination = @upload_destination WHERE id = @id";
+        dbCommand.CommandText = "UPDATE UploadLogs SET delete_datetime = @delete_datetime, delete_reason = @delete_reason, post_fullname = @post_fullname, reply_deleted = @reply_deleted, reply_fullname = @reply_fullname, requestor_username = @requestor_username, upload_datetime = @upload_datetime, upload_deleted = @upload_deleted, upload_delete_key = @upload_delete_key, upload_destination = @upload_destination WHERE id = @id";
 
-        dbCommand.AddParameter("@deleted", uploadLog.Deleted);
         dbCommand.AddParameter("@delete_datetime", (object)uploadLog.DeleteDatetime ?? DBNull.Value);
         dbCommand.AddParameter("@delete_reason", (object)uploadLog.DeleteReason ?? DBNull.Value);
-        dbCommand.AddParameter("@delete_key", uploadLog.DeleteKey);
         dbCommand.AddParameter("@id", uploadLog.Id);
         dbCommand.AddParameter("@post_fullname", uploadLog.PostFullname);
+        dbCommand.AddParameter("@reply_deleted", uploadLog.ReplyDeleted);
         dbCommand.AddParameter("@reply_fullname", uploadLog.ReplyFullname);
         dbCommand.AddParameter("@requestor_username", uploadLog.RequestorUsername);
         dbCommand.AddParameter("@upload_datetime", uploadLog.UploadDatetime);
+        dbCommand.AddParameter("@upload_deleted", uploadLog.UploadDeleted);
+        dbCommand.AddParameter("@upload_delete_key", uploadLog.UploadDeleteKey);
         dbCommand.AddParameter("@upload_destination", uploadLog.UploadDestination);
 
         dbCommand.ExecuteNonQuery();

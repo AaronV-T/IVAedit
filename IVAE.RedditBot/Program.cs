@@ -1,6 +1,7 @@
 ﻿using IVAE.RedditBot.DTO;
 using System;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace IVAE.RedditBot
 {
@@ -8,11 +9,11 @@ namespace IVAE.RedditBot
   {
     static bool exit = false;
 
-
     static void Main(string[] args)
     {
       try
       {
+        Logger.Init();
 
         Task loopTask = Task.Run(RunProcessLoop);
         while (Console.ReadKey().Key != ConsoleKey.Escape) {}
@@ -54,7 +55,7 @@ namespace IVAE.RedditBot
             if (exit)
               break;
 
-            Console.WriteLine("Processing messages...");
+            Log.Information("Processing messages...");
             await messageProcessor.ProcessUnreadMessages();
 
             if (exit)
@@ -63,7 +64,7 @@ namespace IVAE.RedditBot
             if (i < processLoopsToRunBetweenCleanups - 1)
             {
               int secondsToPause = 300;
-              Console.WriteLine($"Pausing for {secondsToPause / 60} minutes...");
+              Log.Information($"Pausing for {secondsToPause / 60} minutes...");
               for (int j = 0; j < secondsToPause; j++)
               {
                 if (exit)
@@ -89,14 +90,14 @@ namespace IVAE.RedditBot
             shortCleanups = 0;
           }
 
-          Console.WriteLine($"Cleaning up posts since {cleanupCutoff.ToLocalTime().ToShortDateString()} {cleanupCutoff.ToLocalTime().ToShortTimeString()}...");
+          Log.Information($"Cleaning up posts since {cleanupCutoff.ToLocalTime().ToShortDateString()} {cleanupCutoff.ToLocalTime().ToShortTimeString()}...");
           await cleanupManager.CleanupPosts(cleanupCutoff);
             
         }
       }
       catch (Exception ex)
       {
-        Console.WriteLine(ex.ToString());
+        Log.Error(ex, $"Exception caught in {nameof(Program)}.RunProcessLoop().");
       }
     }
   }

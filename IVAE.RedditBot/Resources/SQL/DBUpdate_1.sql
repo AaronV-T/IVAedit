@@ -24,9 +24,10 @@ CREATE TABLE [dbo].[UploadLogs](
 	[requestor_username] [varchar](50) NOT NULL,
 	[reply_fullname] [varchar](max) NOT NULL,
 	[upload_destination] [varchar](50) NOT NULL,
-	[delete_key] [varchar](50) NOT NULL,
+	[upload_delete_key] [varchar](50) NOT NULL,
   [upload_datetime] [datetime] NOT NULL,
-  [deleted] [bit] NOT NULL,
+  [reply_deleted] [bit] NOT NULL,
+  [upload_deleted] [bit] NOT NULL,
 	[delete_datetime] [datetime] NULL,
 	[delete_reason] [varchar](50) NULL,
  CONSTRAINT [PK_UploadLogs] PRIMARY KEY CLUSTERED 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using IVAE.RedditBot.DTO;
+using Serilog;
 
 namespace IVAE.RedditBot
 {
@@ -28,7 +29,7 @@ namespace IVAE.RedditBot
 
       foreach (UploadLog uploadLog in uploadLogs)
       {
-        if (uploadLog.Deleted || uploadLog.UploadDatetime < earliestTimeToCleanup)
+        if ((uploadLog.ReplyDeleted && uploadLog.UploadDeleted) || uploadLog.UploadDatetime < earliestTimeToCleanup)
           continue;
 
         List<RedditThing> postAndReply = await redditClient.GetInfoOfCommentsAndLinks("all", new List<string> { uploadLog.PostFullname, uploadLog.ReplyFullname });
@@ -50,19 +51,29 @@ namespace IVAE.RedditBot
 
     public async Task DeleteUpload(UploadLog uploadLog, string reason)
     {
-      Console.WriteLine($"Deleting UploadLog with ID '{uploadLog.Id}' (reply '{uploadLog.ReplyFullname}')");
+      Log.Information($"Deleting UploadLog with ID '{uploadLog.Id}' (reply '{uploadLog.ReplyFullname}')");
 
-      if (uploadLog.UploadDestination.ToLower() == "imgur")
-        await imgurClient.Delete(uploadLog.DeleteKey);
+      if (!uploadLog.UploadDeleted)
+      {
+        if (uploadLog.UploadDestination.ToLower() == "imgur")
+          uploadLog.UploadDeleted = await imgurClient.Delete(uploadLog.UploadDeleteKey);
+      }
 
-      await redditClient.DeletePost(uploadLog.ReplyFullname);
+      if (!uploadLog.ReplyDeleted)
+      {
+        await redditClient.DeletePost(uploadLog.ReplyFullname);
+        uploadLog.ReplyDeleted = true;
+      }
 
-      uploadLog.Deleted = true;
-      uploadLog.DeleteDatetime = DateTime.UtcNow;
-      uploadLog.DeleteReason = reason;
+      if (uploadLog.DeleteDatetime == null)
+      {
+        uploadLog.DeleteDatetime = DateTime.UtcNow;
+        uploadLog.DeleteReason = reason;
+      }
+
       databaseAccessor.UpdateUploadLog(uploadLog);
 
-      Console.WriteLine($"Deleted post '{uploadLog.ReplyFullname}'.");
+      Log.Information($"Deleted post '{uploadLog.ReplyFullname}'.");
     }
   }
 }

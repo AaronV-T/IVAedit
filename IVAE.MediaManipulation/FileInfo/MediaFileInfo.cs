@@ -84,12 +84,21 @@ namespace IVAE.MediaManipulation
         if (audioStreamInfo.Duration != null && (Duration == null || audioStreamInfo.Duration > Duration))
           Duration = audioStreamInfo.Duration;
       }
+
       foreach (VideoStreamInfo videoStreamInfo in VideoStreams)
       {
         if (videoStreamInfo.Duration != null && (Duration == null || videoStreamInfo.Duration > Duration))
           Duration = videoStreamInfo.Duration;
         if (videoStreamInfo.NbFrames != null && (FrameCount == null || videoStreamInfo.NbFrames > FrameCount))
           FrameCount = (int)videoStreamInfo.NbFrames;
+      }
+
+      if (this.HasVideo && this.FrameCount == null)
+      {
+        if (int.TryParse(
+          new FFProbeProcessRunner().Run($"-v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nokey=1:noprint_wrappers=1 \"{path}\""),
+          out int readFrameCount))
+          FrameCount = readFrameCount;
       }
     }
   }

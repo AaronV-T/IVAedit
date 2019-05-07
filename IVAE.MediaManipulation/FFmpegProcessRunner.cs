@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace IVAE.MediaManipulation
 {
@@ -25,8 +26,8 @@ namespace IVAE.MediaManipulation
 
         StringBuilder sb = new StringBuilder();
         process.EnableRaisingEvents = true;
-        process.OutputDataReceived += (s, e) => { Debug.WriteLine($"o: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
-        process.ErrorDataReceived += (s, e) => { Debug.WriteLine($"e: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
+        process.OutputDataReceived += (s, e) => { Log.Verbose($"o: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
+        process.ErrorDataReceived += (s, e) => { Log.Verbose($"e: {e.Data}"); sb.AppendLine(e.Data); DataReceivedFromProcess(e.Data); };
 
         process.Start();
         process.BeginErrorReadLine();

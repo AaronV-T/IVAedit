@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using IVAE.RedditBot.DTO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace IVAE.RedditBot
 {
@@ -43,12 +44,13 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit BlockUser Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
     }
 
     public async Task DeletePost(string fullName)
     {
       Dictionary<string, string> data = new Dictionary<string, string>();
+      data.Add("api_type", "json");
       data.Add("id", fullName);
 
       HttpContent content = new FormUrlEncodedContent(data);
@@ -57,7 +59,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit DeletePost Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
     }
 
     public async Task<RedditThing> GetInfoOfCommentOrLink(string subreddit, string fullName)
@@ -79,7 +81,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit Comment/Link Info Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
       return GetThingsFromResponse(responseContent);
     }
@@ -91,7 +93,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit UserAbout Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
       List<RedditThing> things = GetThingsFromResponse(responseContent);
       if (things == null || things.Count == 0)
@@ -109,7 +111,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit UnreadMessages Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
       return GetThingsFromResponse(responseContent);
     }
@@ -117,6 +119,7 @@ namespace IVAE.RedditBot
     public async Task MarkMessagesAsRead(List<string> messageNames)
     {
       Dictionary<string, string> data = new Dictionary<string, string>();
+      data.Add("api_type", "json");
       data.Add("id", string.Join(",", messageNames));
 
       HttpContent content = new FormUrlEncodedContent(data);
@@ -125,7 +128,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      //Console.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit MarkMessagesAsRead Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
     }
 
     public async Task<string> PostComment(string parentFullName, string text)
@@ -141,7 +144,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit PostComment Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
       dynamic deserializedResponse = JsonConvert.DeserializeObject<dynamic>(responseContent);
       if (deserializedResponse == null)
@@ -169,7 +172,7 @@ namespace IVAE.RedditBot
       SetRatelimitInfo(response);
       string responseContent = await response.Content.ReadAsStringAsync();
 
-      Debug.WriteLine(JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented));
+      Log.Verbose($"Reddit Submit Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
       dynamic deserializedResponse = JsonConvert.DeserializeObject<dynamic>(responseContent);
       if (deserializedResponse == null)
@@ -218,7 +221,7 @@ namespace IVAE.RedditBot
         if (ratelimitResetTime == DateTime.MinValue)
           throw new Exception("Rate limit reset time not correctly set.");
 
-        Console.WriteLine($"Reddit rate limit hit. Waiting until {ratelimitResetTime.ToShortTimeString()}");
+        Log.Information($"Reddit rate limit hit. Waiting until {ratelimitResetTime.ToShortTimeString()}");
         while (DateTime.Now < ratelimitResetTime)
         {
           await Task.Delay(100);
