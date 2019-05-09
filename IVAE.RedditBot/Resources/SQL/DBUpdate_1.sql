@@ -26,6 +26,7 @@ CREATE TABLE [dbo].[UploadLogs](
 	[upload_destination] [varchar](50) NOT NULL,
 	[upload_delete_key] [varchar](50) NOT NULL,
   [upload_datetime] [datetime] NOT NULL,
+  [upload_path] [varchar](50) NOT NULL,
   [reply_deleted] [bit] NOT NULL,
   [upload_deleted] [bit] NOT NULL,
 	[delete_datetime] [datetime] NULL,

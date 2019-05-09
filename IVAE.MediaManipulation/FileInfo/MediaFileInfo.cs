@@ -95,9 +95,12 @@ namespace IVAE.MediaManipulation
 
       if (this.HasVideo && this.FrameCount == null)
       {
-        if (int.TryParse(
-          new FFProbeProcessRunner().Run($"-v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nokey=1:noprint_wrappers=1 \"{path}\""),
-          out int readFrameCount))
+        string countFrameResult = new FFProbeProcessRunner().Run($"-v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of default=nokey=1:noprint_wrappers=1 \"{path}\"");
+        int newlineIndex = countFrameResult.IndexOf('\n');
+        if (newlineIndex > -1)
+          countFrameResult = countFrameResult.Substring(0, newlineIndex);
+
+        if (int.TryParse(countFrameResult, out int readFrameCount))
           FrameCount = readFrameCount;
       }
     }

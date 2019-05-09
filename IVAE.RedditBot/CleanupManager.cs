@@ -11,13 +11,15 @@ namespace IVAE.RedditBot
   public class CleanupManager
   {
     private DatabaseAccessor databaseAccessor;
+    private GfycatClient gfycatClient;
     private ImgurClient imgurClient;
     private RedditClient redditClient;
     private Settings settings;
 
-    public CleanupManager(DatabaseAccessor databaseAccessor, ImgurClient imgurClient, RedditClient redditClient, Settings settings)
+    public CleanupManager(DatabaseAccessor databaseAccessor, GfycatClient gfycatClient, ImgurClient imgurClient, RedditClient redditClient, Settings settings)
     {
       this.databaseAccessor = databaseAccessor ?? throw new ArgumentNullException(nameof(databaseAccessor));
+      this.gfycatClient = gfycatClient ?? throw new ArgumentNullException(nameof(gfycatClient));
       this.imgurClient = imgurClient ?? throw new ArgumentNullException(nameof(imgurClient));
       this.redditClient = redditClient ?? throw new ArgumentNullException(nameof(redditClient));
       this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -55,8 +57,17 @@ namespace IVAE.RedditBot
 
       if (!uploadLog.UploadDeleted)
       {
-        if (uploadLog.UploadDestination.ToLower() == "imgur")
-          uploadLog.UploadDeleted = await imgurClient.Delete(uploadLog.UploadDeleteKey);
+        switch (uploadLog.UploadDestination.ToLower())
+        {
+          case "imgur":
+            uploadLog.UploadDeleted = await imgurClient.Delete(uploadLog.UploadDeleteKey);
+            break;
+          case "gfycat":
+            uploadLog.UploadDeleted = await gfycatClient.Delete(uploadLog.UploadDeleteKey);
+            break;
+          default:
+            throw new NotImplementedException($"Unimplemented delete from upload destination '{uploadLog.UploadDestination}'.");
+        }
       }
 
       if (!uploadLog.ReplyDeleted)

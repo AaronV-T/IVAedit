@@ -14,6 +14,8 @@ namespace IVAE.MediaManipulation
 
     public string Run(string arguments)
     {
+      Log.Verbose($"ffmpeg.exe {arguments}");
+
       ProcessStartInfo processStartInfo = new ProcessStartInfo("ffmpeg.exe", arguments);
       processStartInfo.RedirectStandardError = true;
       processStartInfo.RedirectStandardOutput = true;

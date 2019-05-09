@@ -126,7 +126,7 @@ namespace IVAE.RedditBot
           case "FRAMERATE":
             FrameRate = float.Parse(kvp.Value);
             break;
-          case "speed":
+          case "SPEED":
             PlaybackRate = float.Parse(kvp.Value);
             if (PlaybackRate < 0.125 || PlaybackRate > 8)
               throw new ArgumentException("Speed not a valid value.");

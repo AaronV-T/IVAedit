@@ -6,7 +6,7 @@
   "FilterSettings": {
     "MaximumDownloadFileSizeInMB": 50,
     "MaximumUploadFileSizeInMB": 25,
-    "MaximumUploadFileDurationInSeconds": 30,
+    "MaximumUploadFileDurationInSeconds": 60,
     "MinimumPostAgeInMinutes": 30,
     "MinimumPostScore": 4,
     "MinimumPostingAccountAgeInDays": 30,

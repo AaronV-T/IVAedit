@@ -19,5 +19,6 @@ namespace IVAE.RedditBot.DTO
     public bool UploadDeleted { get; set; }
     public string UploadDeleteKey { get; set; }
     public string UploadDestination { get; set; }
+    public string UploadPath { get; set; }
   }
 }

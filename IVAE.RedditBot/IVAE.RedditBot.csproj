@@ -60,8 +60,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DatabaseAccessor.cs" />
+    <Compile Include="DTO\GfycatUploadResponse.cs" />
     <Compile Include="DTO\UploadLog.cs" />
     <Compile Include="CleanupManager.cs" />
+    <Compile Include="GfycatClient.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="YoutubedlProcessRunner.cs" />
     <Compile Include="MessageProcessor.cs" />

@@ -15,14 +15,16 @@ namespace IVAE.RedditBot
 
     private CleanupManager cleanupManager;
     private DatabaseAccessor databaseAccessor;
+    private GfycatClient gfycatClient;
     private ImgurClient imgurClient;
     private RedditClient redditClient;
     private Settings settings;
 
-    public MessageProcessor(CleanupManager cleanupManager, DatabaseAccessor databaseAccessor, ImgurClient imgurClient, RedditClient redditClient, Settings settings)
+    public MessageProcessor(CleanupManager cleanupManager, DatabaseAccessor databaseAccessor, GfycatClient gfycatClient, ImgurClient imgurClient, RedditClient redditClient, Settings settings)
     {
       this.cleanupManager = cleanupManager ?? throw new ArgumentNullException(nameof(cleanupManager));
       this.databaseAccessor = databaseAccessor ?? throw new ArgumentNullException(nameof(databaseAccessor));
+      this.gfycatClient = gfycatClient ?? throw new ArgumentNullException(nameof(gfycatClient));
       this.imgurClient = imgurClient ?? throw new ArgumentNullException(nameof(imgurClient));
       this.redditClient = redditClient ?? throw new ArgumentNullException(nameof(redditClient));
       this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -329,22 +331,42 @@ namespace IVAE.RedditBot
 
             // Upload transformed media file.
             byte[] mediaFileBytes = System.IO.File.ReadAllBytes(mediaFilePath);
-            string deleteKey, uploadDestination, uploadLink;
-            uploadDestination = "imgur";
+            string deleteKey, uploadDestination, uploadPath, uploadLink;
 
-            string videoFormat = null;
-            if (System.IO.Path.GetExtension(mediaFilePath) == ".mp4")
-              videoFormat = "mp4";
-            ImgurUploadResponse uploadResponse = await imgurClient.Upload(mediaFileBytes, videoFormat);
-
-            if (uploadResponse == null)
+            if (!transformedMFI.HasVideo || transformedMFI.Duration <= 30)
             {
-              await onFailedToProcessPost("Failed to upload transformed file.");
-              continue;
-            }
+              uploadDestination = "imgur";
 
-            deleteKey = uploadResponse.DeleteHash;
-            uploadLink = uploadResponse.Link;
+              string videoFormat = null;
+              if (System.IO.Path.GetExtension(mediaFilePath) == ".mp4")
+                videoFormat = "mp4";
+              ImgurUploadResponse imgurUploadResponse = await imgurClient.Upload(mediaFileBytes, videoFormat);
+
+              if (imgurUploadResponse == null)
+              {
+                await onFailedToProcessPost("Failed to upload transformed file.");
+                continue;
+              }
+
+              deleteKey = imgurUploadResponse.DeleteHash;
+              uploadLink = imgurUploadResponse.Link;
+              uploadPath = imgurUploadResponse.Name;
+            }
+            else
+            {
+              uploadDestination = "gfycat";
+              string gfyname = await gfycatClient.Upload(mediaFileBytes);
+
+              if (gfyname == null)
+              {
+                await onFailedToProcessPost("Failed to upload transformed file.");
+                continue;
+              }
+
+              deleteKey = gfyname;
+              uploadLink = $"https://giant.gfycat.com/{gfyname}.mp4";
+              uploadPath = gfyname;
+            }
 
             // Respond with link.
             stopwatch.Stop();
@@ -353,7 +375,7 @@ namespace IVAE.RedditBot
             string responseText = $"[Direct File Link]({uploadLink})\n\n" +
               $"***\n" +
               $"{stopwatch.Elapsed.TotalMinutes.ToString("N2")} minutes. {((double)origFileSize / 1000000).ToString("N2")}MB -> {transformedFileSizeInMB.ToString("N2")}MB.  \n" +
-              $"[More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback) | [Delete](https://www.reddit.com/message/compose/?to=IVAEbot&subject=Command&message=delete%20{uploadId.ToString()})(Requestor Only)";
+              $"I am a bot in development. [More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback) | [Delete](https://www.reddit.com/message/compose/?to=IVAEbot&subject=Command&message=delete%20{uploadId.ToString()})(Requestor Only)";
             string replyCommentName = await redditClient.PostComment(mentionComment.Name, responseText);
             if (replyCommentName == null)
               replyCommentName = await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to repond directly to your [request]({mentionComment.Permalink}) so I have posted my response here.\n\n{responseText}");
@@ -368,7 +390,8 @@ namespace IVAE.RedditBot
               UploadDatetime = DateTime.UtcNow,
               UploadDeleted = false,
               UploadDeleteKey = deleteKey,
-              UploadDestination = uploadDestination
+              UploadDestination = uploadDestination,
+              UploadPath = uploadPath
             });
           }
           catch (Exception)
