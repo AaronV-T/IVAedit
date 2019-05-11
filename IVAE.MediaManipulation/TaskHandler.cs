@@ -516,7 +516,7 @@ ReverseVideo(outputPath, filePath);
       return outputPath;
     }
 
-    public string StabilizeVideo(string videoFilePath)
+    public string StabilizeVideo(string videoFilePath, int optzoom)
     {
       OnChangeStep?.Invoke("Stabilizing Video");
 
@@ -524,7 +524,7 @@ ReverseVideo(outputPath, filePath);
 
       VideoManipulator videoManipulator = new VideoManipulator();
       videoManipulator.OnProgress += ProgressUpdate;
-      videoManipulator.StabilizeVideo(outputPath, videoFilePath);
+      videoManipulator.StabilizeVideo(outputPath, videoFilePath, optzoom);
       videoManipulator.OnProgress -= ProgressUpdate;
 
       return outputPath;

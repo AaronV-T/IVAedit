@@ -214,7 +214,14 @@ namespace IVAeditGUI
         },
         {
           "Stabilize Video",
-          new OperationSetupInfo(null, StabilizeVideo)
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Optzoom", new InputSetupInfo(ControlType.TextBox) }
+            },
+            StabilizeVideo
+          )
         },
         {
           "Stitch Images",
@@ -1117,6 +1124,13 @@ namespace IVAeditGUI
 
     private async Task StabilizeVideo()
     {
+      const string OP_NAME = "Stabilize Video";
+      string optzoomInputText = GetInputValue(OP_NAME, "Optzoom");
+
+      int optzoom = 0;
+      if (optzoomInputText != string.Empty && !int.TryParse(optzoomInputText, out optzoom))
+        throw new ArgumentException($"Optzoom is not a valid integer.");
+
       System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
       openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
       openFileDialog.Title = "Select Video.";
@@ -1136,7 +1150,7 @@ namespace IVAeditGUI
       string outputPath = null;
       await Task.Factory.StartNew(() =>
       {
-        outputPath = taskHandler.StabilizeVideo(openFileDialog.FileName);
+        outputPath = taskHandler.StabilizeVideo(openFileDialog.FileName, optzoom);
       });
 
       mainWindow.SetMessage($"Stabilized video created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");

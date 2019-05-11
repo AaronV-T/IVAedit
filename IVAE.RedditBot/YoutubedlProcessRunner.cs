@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace IVAE.RedditBot
 {
@@ -11,6 +12,8 @@ namespace IVAE.RedditBot
   {
     public List<string> Run(string arguments)
     {
+      Log.Verbose($"youtube-dl.exe {arguments}");
+
       ProcessStartInfo processStartInfo = new ProcessStartInfo("youtube-dl.exe", arguments);
       //processStartInfo.RedirectStandardError = true;
       //processStartInfo.RedirectStandardOutput = true;

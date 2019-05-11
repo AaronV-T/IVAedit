@@ -306,8 +306,11 @@ namespace IVAE.RedditBot.DTO
     [JsonProperty("subject")]
     public string Subject { get; set; }
 
+    /// <summary>
+    /// If the thing is a user this could be an object, if the thing is a link or comment then this will probably be a string.
+    /// </summary>
     [JsonProperty("subreddit")]
-    public string Subreddit { get; set; }
+    public dynamic Subreddit { get; set; }
 
     [JsonProperty("subreddit_id")]
     public string SubredditId { get; set; }

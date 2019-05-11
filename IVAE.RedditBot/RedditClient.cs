@@ -203,7 +203,7 @@ namespace IVAE.RedditBot
         if (ratelimitResetHeaders != null && ratelimitResetHeaders.Count > 0)
           ratelimitResetTime = DateTime.Now.AddSeconds(int.Parse(ratelimitResetHeaders[0]));
 
-        Debug.WriteLine($"RateLimitRemaining: {ratelimitRemaining}.");
+        Log.Verbose($"RateLimitRemaining: {ratelimitRemaining}.");
       }
       catch (Exception)
       {

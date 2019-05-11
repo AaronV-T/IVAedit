@@ -45,7 +45,6 @@ namespace IVAE.RedditBot
 
         CleanupManager cleanupManager = new CleanupManager(databaseAccessor, gfycatClient, imgurClient, redditClient, settings);
         MessageProcessor messageProcessor = new MessageProcessor(cleanupManager, databaseAccessor, gfycatClient, imgurClient, redditClient, settings);
-        
 
         int shortCleanups = 0;
         while (!exit)

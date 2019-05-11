@@ -24,6 +24,9 @@ namespace IVAE.RedditBot
 
       splitText.RemoveAt(0); // Remove bot username mention.
 
+      while (splitText.Count > 0 && splitText[0][0] == '!')
+        splitText.RemoveAt(0); // Remove non media file commands.
+
       while (splitText.Count > 0)
       {
         string commandText = splitText[0].ToUpper();
@@ -370,14 +373,24 @@ namespace IVAE.RedditBot
 
   public class StabilizeCommand : IVAECommand
   {
+    private int optzoom;
+
     public StabilizeCommand(Dictionary<string, string> parameters)
     {
-      foreach (var kvp in parameters) { }
+      foreach (var kvp in parameters)
+      {
+        switch (kvp.Key.ToUpper())
+        {
+          case "OPTZOOM":
+            optzoom = int.Parse(kvp.Value);
+            break;
+        }
+      }
     }
 
     public string Execute(string filePath)
     {
-      return new MediaManipulation.TaskHandler().StabilizeVideo(filePath);
+      return new MediaManipulation.TaskHandler().StabilizeVideo(filePath, optzoom);
     }
   }
 

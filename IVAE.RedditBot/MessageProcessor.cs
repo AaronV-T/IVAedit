@@ -152,8 +152,20 @@ namespace IVAE.RedditBot
     {
       // Get parent of each request.
       Dictionary<RedditThing, RedditThing> requestsWithParents = new Dictionary<RedditThing, RedditThing>();
-      foreach (RedditThing message in requests)
-        requestsWithParents.Add(message, await redditClient.GetInfoOfCommentOrLink(message.Subreddit, message.ParentId));
+      foreach (RedditThing request in requests)
+      {
+        RedditThing immediateParent = await redditClient.GetInfoOfCommentOrLink(request.Subreddit, request.ParentId);
+
+        // Determine whether to use the root link or the request's immediate parent.
+        RedditThing parentPost;
+        List<string> splitRequest = request.GetCommandTextFromMention(redditClient.Username).Split().ToList();
+        if (immediateParent.Kind == "t3" || (splitRequest.Count > 1 && splitRequest[1].ToLower() == "!immediate"))
+          parentPost = immediateParent;
+        else 
+          parentPost = await redditClient.GetInfoOfCommentOrLink(request.Subreddit, immediateParent.LinkId);
+
+        requestsWithParents.Add(request, parentPost);
+      }
 
       // Process each request.
       foreach (var kvp in requestsWithParents)
@@ -241,7 +253,7 @@ namespace IVAE.RedditBot
           Uri mediaUrl = GetMediaUrlFromPost(parentPost);
           if (mediaUrl == null || string.IsNullOrWhiteSpace(mediaUrl.AbsoluteUri))
           {
-            await onFailedToProcessPost("Invalid media URL. Remember to reply directly to the link/comment that has the media file.");
+            await onFailedToProcessPost("Invalid media URL.");
             continue;
           }
 
@@ -276,6 +288,29 @@ namespace IVAE.RedditBot
               using (System.Net.WebClient client = new System.Net.WebClient())
               {
                 client.DownloadFile(mediaUrl, mediaFilePath);
+              }
+            }
+            else if (mediaUrl.Host == "v.redd.it")
+            {
+              // Temporary override for v.redd.it links until youtube-dl is fixed.
+              mediaFilePath = $"{filePathWithoutExtension}.mp4";
+
+              using (System.Net.WebClient client = new System.Net.WebClient())
+              {
+                client.DownloadFile(mediaUrl, mediaFilePath);
+
+                try
+                {
+                  string audioUrl = $"{mediaUrl.AbsoluteUri.Substring(0, mediaUrl.AbsoluteUri.LastIndexOf("/"))}/audio";
+                  string audioFilePath = System.IO.Path.Combine(DOWNLOAD_DIR, $"{System.IO.Path.GetFileNameWithoutExtension(mediaFilePath)}_audio");
+                  string combinedFilePath = System.IO.Path.Combine(DOWNLOAD_DIR, "combined.mp4");
+                  client.DownloadFile(audioUrl, audioFilePath);
+                  new MediaManipulation.FFmpegProcessRunner().Run($"-i {mediaFilePath} -i {audioFilePath} -acodec copy -vcodec copy \"{combinedFilePath}\"");
+                  System.IO.File.Delete(audioFilePath);
+                  System.IO.File.Delete(mediaFilePath);
+                  System.IO.File.Move(combinedFilePath, mediaFilePath);
+                }
+                catch (Exception) { }
               }
             }
             else
@@ -374,7 +409,7 @@ namespace IVAE.RedditBot
 
             string responseText = $"[Direct File Link]({uploadLink})\n\n" +
               $"***\n" +
-              $"{stopwatch.Elapsed.TotalMinutes.ToString("N2")} minutes. {((double)origFileSize / 1000000).ToString("N2")}MB -> {transformedFileSizeInMB.ToString("N2")}MB.  \n" +
+              $"Finished in {(stopwatch.Elapsed.TotalMinutes >= 1 ? $"{stopwatch.Elapsed.ToString("mm")} minutes " : "" )}{stopwatch.Elapsed.ToString("ss")} seconds. {((double)origFileSize / 1000000).ToString("N2")}MB -> {transformedFileSizeInMB.ToString("N2")}MB.  \n" +
               $"I am a bot in development. [More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback) | [Delete](https://www.reddit.com/message/compose/?to=IVAEbot&subject=Command&message=delete%20{uploadId.ToString()})(Requestor Only)";
             string replyCommentName = await redditClient.PostComment(mentionComment.Name, responseText);
             if (replyCommentName == null)
@@ -415,7 +450,7 @@ namespace IVAE.RedditBot
       if (post.Kind == "t1")
       {
         // Return the first link found in the body.
-        string[] splitBody = post.Body.Split();
+        string[] splitBody = post.Body.Split(' ', '(', ')', '\n');
         foreach (string s in splitBody)
         {
           if (Uri.TryCreate(s, UriKind.Absolute, out Uri uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
@@ -427,6 +462,25 @@ namespace IVAE.RedditBot
       // Link
       else if (post.Kind == "t3")
       {
+        // Temporary override for v.redd.it links until youtube-dl is fixed.
+        if (post.Url.ToLower().Contains("v.redd.it") && post.Media != null)
+        {
+          dynamic mediaObj = post.Media;
+          if (mediaObj.reddit_video == null)
+          {
+            Console.WriteLine($"Can't find reddit_video object in post's media object.");
+            return null;
+          }
+
+          string url = mediaObj.reddit_video.fallback_url;
+          return new Uri(url);
+        }
+
+        if (post.CrosspostParentList != null && post.CrosspostParentList.Count > 0)
+        {
+          return GetMediaUrlFromPost(post.CrosspostParentList[0]);
+        }
+
         return new Uri(post.Url);
       }
       else

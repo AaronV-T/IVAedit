@@ -9,7 +9,7 @@ namespace IVAE.MediaManipulation
 {
   public class VideoManipulator
   {
-    const string FFMPEG_TIME_REGEX = @"^(\d+:)?(\d+:)?\d+(\.\d)?$";
+    const string FFMPEG_TIME_REGEX = @"^(\d+:)?(\d+:)?\d+(\.\d+)?$";
 
     public event Action<float> OnProgress;
     private double currentVideoDurationInMS = -1;
@@ -26,7 +26,7 @@ namespace IVAE.MediaManipulation
         alsoChangeAudio = false;
 
       if (alsoChangeAudio) {
-        if (newPlaybackRate < 0)
+        if (newPlaybackRate <= 0)
           throw new ArgumentOutOfRangeException(nameof(newPlaybackRate));
         if (newPlaybackRate < 0.5f && !(new List<float> { 0.25f, 0.125f, 0.0625f, 0.03125f, 0.015625f, 0.0078125f, 0.00390625f }).Contains(newPlaybackRate))
           throw new ArgumentException("Playback rates lower than 0.5 must be: 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, or 0.00390625.");
@@ -393,12 +393,15 @@ namespace IVAE.MediaManipulation
       ResizeVideoHelper(outputPath, videoPath, $"trunc(iw*{scaleFactor}/2)*2", $"trunc(ih*{scaleFactor}/2)*2");
     }
 
-    public void StabilizeVideo(string outputPath, string videoPath)
+    public void StabilizeVideo(string outputPath, string videoPath, int optzoom)
     {
       if (string.IsNullOrEmpty(outputPath))
         throw new ArgumentNullException(nameof(outputPath));
       if (string.IsNullOrEmpty(videoPath))
         throw new ArgumentNullException(nameof(videoPath));
+      if (optzoom != 0 && optzoom != 1 && optzoom != 2)
+        throw new ArgumentOutOfRangeException($"{nameof(optzoom)} must be 0, 1, or 2.");
+
 
       if (System.IO.File.Exists(outputPath))
         System.IO.File.Delete(outputPath);
@@ -419,7 +422,7 @@ namespace IVAE.MediaManipulation
       System.IO.File.Delete(dummyOutputPath);
 
       currentStep = 2;
-      fpr.Run($"-i \"{videoPath}\" -vf vidstabtransform=optzoom=0:crop=black,unsharp=5:5:0.8:3:3:0.4 \"{outputPath}\"");
+      fpr.Run($"-i \"{videoPath}\" -vf vidstabtransform=optzoom={optzoom}:crop=black,unsharp=5:5:0.8:3:3:0.4 \"{outputPath}\"");
 
       fpr.OnDurationMessage -= DurationMessageReceived;
       fpr.OnTimeMessage -= TimeMessageReceived;
