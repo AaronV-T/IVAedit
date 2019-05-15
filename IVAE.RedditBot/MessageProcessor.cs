@@ -168,6 +168,7 @@ namespace IVAE.RedditBot
       }
 
       // Process each request.
+      Dictionary<string, List<RedditThing>> processedRequestsByUser = new Dictionary<string, List<RedditThing>>();
       foreach (var kvp in requestsWithParents)
       {
         try
@@ -175,9 +176,31 @@ namespace IVAE.RedditBot
           RedditThing mentionComment = kvp.Key;
           RedditThing parentPost = kvp.Value;
 
+          // If we have already processed a request from this user in this batch of requests:...
+          if (processedRequestsByUser.ContainsKey(mentionComment.Author))
+          {
+            // If this is a duplicate request: discard it.
+            if (processedRequestsByUser[mentionComment.Author].Any(rt => rt.ParentId == mentionComment.ParentId && rt.Body == mentionComment.Body))
+            {
+              Log.Information($"Skipping {mentionComment.Name}: Post is a duplicate. ({mentionComment.Author}: '{mentionComment.Body}')");
+              await redditClient.MarkMessagesAsRead(new List<string> { mentionComment.Name });
+              continue;
+            }
+            // If we have already processed enough requests from this user in this batch: temporarily skip it.
+            else if (processedRequestsByUser[mentionComment.Author].Count >= 2)
+            {
+              Log.Information($"Temporarily skipping {mentionComment.Name}: Too many recent requests. ({mentionComment.Author}: '{mentionComment.Body}')");
+              continue;
+            }
+
+            processedRequestsByUser[mentionComment.Author].Add(mentionComment);
+          }
+          else
+            processedRequestsByUser.Add(mentionComment.Author, new List<RedditThing> { mentionComment });
+
           bool requestorIsAdmin = settings.Administrators.Contains(mentionComment.Author);
 
-          // Verify that the post is old enough.
+          // Verify that the media post is old enough.
           if (!requestorIsAdmin && parentPost.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Now.ToUniversalTime().AddMinutes(-settings.FilterSettings.MinimumPostAgeInMinutes))
           {
             Log.Information($"Temporarily skipping {mentionComment.Name}: Post is too recent. ({mentionComment.Author}: '{mentionComment.Body}')");

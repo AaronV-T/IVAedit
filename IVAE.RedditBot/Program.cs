@@ -49,7 +49,7 @@ namespace IVAE.RedditBot
         int shortCleanups = 0;
         while (!exit)
         {
-          int processLoopsToRunBetweenCleanups = 5;
+          int processLoopsToRunBetweenCleanups = 20;
           for (int i = 0; i < processLoopsToRunBetweenCleanups; i++)
           {
             if (exit)
@@ -63,7 +63,7 @@ namespace IVAE.RedditBot
 
             if (i < processLoopsToRunBetweenCleanups - 1)
             {
-              int secondsToPause = 300;
+              int secondsToPause = 60;
               Log.Information($"Pausing for {secondsToPause / 60} minutes...");
               for (int j = 0; j < secondsToPause; j++)
               {

@@ -113,7 +113,9 @@ namespace IVAE.RedditBot
 
       Log.Verbose($"Reddit UnreadMessages Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
 
-      return GetThingsFromResponse(responseContent);
+      List<RedditThing> messages = GetThingsFromResponse(responseContent);
+      messages.Reverse();
+      return messages;
     }
 
     public async Task MarkMessagesAsRead(List<string> messageNames)
