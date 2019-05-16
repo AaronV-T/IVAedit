@@ -225,7 +225,7 @@ namespace IVAE.RedditBot
           // Verify that the post is safe to process.
           if (!requestorIsAdmin && !await PostIsSafeToProcess(parentPost, true))
           {
-            await onFailedToProcessPost("Post is not safe. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_limitations) for more information.");
+            await onFailedToProcessPost("Post does not meet limitations. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_limitations) for more information.");
             continue;
           }
 
@@ -261,12 +261,7 @@ namespace IVAE.RedditBot
             continue;
           }
 
-          if (commands == null || commands.Count == 0)
-          {
-            await onFailedToProcessPost("No valid commands.  \nSee [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_commands) for a list of valid commands.");
-            continue;
-          }
-          else if (commands.Any(command => commands.Count(cmd => cmd.GetType() == command.GetType()) > 1)) // This is O(n^2), consider something more efficient.
+          if (commands != null && commands.Any(command => commands.Count(cmd => cmd.GetType() == command.GetType()) > 1)) // This is O(n^2), consider something more efficient.
           {
             await onFailedToProcessPost("Multiple commands of same type.");
             continue;
@@ -390,7 +385,6 @@ namespace IVAE.RedditBot
             // Upload transformed media file.
             byte[] mediaFileBytes = System.IO.File.ReadAllBytes(mediaFilePath);
             string deleteKey, uploadDestination, uploadPath, uploadLink;
-
             if (!transformedMFI.HasVideo || transformedMFI.Duration <= 30)
             {
               uploadDestination = "imgur";
@@ -433,7 +427,8 @@ namespace IVAE.RedditBot
             string responseText = $"[Direct File Link]({uploadLink})\n\n" +
               $"***\n" +
               $"Finished in {(stopwatch.Elapsed.TotalMinutes >= 1 ? $"{stopwatch.Elapsed.ToString("mm")} minutes " : "" )}{stopwatch.Elapsed.ToString("ss")} seconds. {((double)origFileSize / 1000000).ToString("N2")}MB -> {transformedFileSizeInMB.ToString("N2")}MB.  \n" +
-              $"I am a bot in development. [More Info](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback) | [Delete](https://www.reddit.com/message/compose/?to=IVAEbot&subject=Command&message=delete%20{uploadId.ToString()})(Requestor Only)";
+              $"[How To Use](https://www.reddit.com/r/IVAEbot/wiki/index) | [Submit Feedback](https://www.reddit.com/message/compose/?to=TheTollski&subject=IVAEbot%20Feedback) | [Delete](https://www.reddit.com/message/compose/?to=IVAEbot&subject=Command&message=delete%20{uploadId.ToString()}) (Requestor Only)  \n" +
+              $"^^I ^^am ^^a ^^bot ^^in ^^beta ^^testing ^^and ^^need ^^more ^^[testers](https://www.reddit.com/r/IVAEbot/comments/bp3aha/testers_needed/). ^^Feel ^^free ^^to ^^learn ^^what ^^I ^^can ^^do ^^and ^^summon ^^me.";
             string replyCommentName = await redditClient.PostComment(mentionComment.Name, responseText);
             if (replyCommentName == null)
               replyCommentName = await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to repond directly to your [request]({mentionComment.Permalink}) so I have posted my response here.\n\n{responseText}");

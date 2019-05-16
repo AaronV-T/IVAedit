@@ -22,7 +22,7 @@ namespace IVAE.RedditBot
       List<string> messageBodyLines = mention.Body.Split(new string[] { "  \n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
       foreach (string line in messageBodyLines)
       {
-        int mentionIndex = line.Trim().IndexOf($"u/{myUsername}");
+        int mentionIndex = line.ToLower().Trim().IndexOf($"u/{myUsername.ToLower()}");
         if (mentionIndex == 0 || mentionIndex == 1)
           return line;
       }
