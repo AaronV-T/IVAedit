@@ -373,6 +373,20 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
+    public string ExtendLastFrameOfVideo(string videoFilePath, double seconds)
+    {
+      OnChangeStep?.Invoke("Extending Last Frame of Video");
+
+      string outputPath = $@"{System.IO.Path.GetDirectoryName(videoFilePath)}\{System.IO.Path.GetFileNameWithoutExtension(videoFilePath)}_Extended{GetCurrentTimeShort()}{System.IO.Path.GetExtension(videoFilePath)}";
+
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.ExtendLastFrame(outputPath, videoFilePath, seconds);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
     public string NormalizeVolume(string filePath)
     {
       OnChangeStep?.Invoke("Normalizing Audio");

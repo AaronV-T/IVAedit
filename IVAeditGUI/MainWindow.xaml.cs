@@ -29,6 +29,8 @@ namespace IVAeditGUI
     {
       InitializeComponent();
 
+      IVAE.MediaManipulation.Logger.Init();
+
       new Controller(this);
 
       Title = $"IVAedit GUI v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}";

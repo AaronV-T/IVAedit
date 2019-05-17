@@ -118,6 +118,17 @@ namespace IVAeditGUI
           )
         },
         {
+          "Extend Video",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Seconds", new InputSetupInfo(ControlType.TextBox) },
+            },
+            ExtendVideo
+          )
+        },
+        {
           "Extract Audio",
           new OperationSetupInfo(null, ExtractAudio)
         },
@@ -765,6 +776,41 @@ namespace IVAeditGUI
       });
 
       mainWindow.SetMessage($"Image with matches created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
+    private async Task ExtendVideo()
+    {
+      const string OP_NAME = "Extend Video";
+      string secondsInputText = GetInputValue(OP_NAME, "Seconds");
+
+      double seconds;
+      if (!double.TryParse(secondsInputText, out seconds))
+        throw new ArgumentException($"Seconds is not a positive real number.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video Files|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Video File.";
+      openFileDialog.Multiselect = false;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.ExtendLastFrameOfVideo(openFileDialog.FileName, seconds);
+      });
+
+      mainWindow.SetMessage($"Extended file created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       System.Diagnostics.Process.Start(outputPath);
     }
 

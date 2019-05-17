@@ -69,14 +69,14 @@ namespace IVAE.RedditBot
             case "-CROP":
               commands.Add(new CropCommand(parameters));
               break;
+            case "-EXTEND":
+              commands.Add(new ExtendVideoCommand(parameters));
+              break;
             case "-EXTRACTAUDIO":
               commands.Add(new ExtractAudioCommand(parameters));
               break;
             case "-FLIP":
               commands.Add(new FlipCommand(parameters));
-              break;
-            case "-GIFTOVIDEO":
-              commands.Add(new GifToVideoCommand(parameters));
               break;
             case "-NORMALIZEVOLUME":
               commands.Add(new NormalizeVolumeCommand(parameters));
@@ -197,6 +197,29 @@ namespace IVAE.RedditBot
     public string Execute(string filePath)
     {
       return new MediaManipulation.TaskHandler().CropImageOrVideo(filePath, x, y, width, height);
+    }
+  }
+
+  public class ExtendVideoCommand : IVAECommand
+  {
+    private double seconds;
+
+    public ExtendVideoCommand(Dictionary<string, string> parameters)
+    {
+      foreach (var kvp in parameters)
+      {
+        switch (kvp.Key.ToUpper())
+        {
+          case "SECONDS":
+            seconds = double.Parse(kvp.Value);
+            break;
+        }
+      }
+    }
+
+    public string Execute(string filePath)
+    {
+      return new MediaManipulation.TaskHandler().ExtendLastFrameOfVideo(filePath, seconds);
     }
   }
 

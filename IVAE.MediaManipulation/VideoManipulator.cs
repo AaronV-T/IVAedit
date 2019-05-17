@@ -162,6 +162,30 @@ namespace IVAE.MediaManipulation
       fpr.OnTimeMessage -= TimeMessageReceived;
     }
 
+    public void ExtendLastFrame(string outputPath, string videoPath, double seconds)
+    {
+      if (string.IsNullOrWhiteSpace(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrWhiteSpace(videoPath))
+        throw new ArgumentNullException(nameof(videoPath));
+      if (seconds <= 0)
+        throw new ArgumentException("seconds must be greater than 0.");
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{videoPath}\" -vf tpad=stop_mode=clone:stop_duration={seconds} -c:a copy \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     public string ExtractAudioFromVideo(string outputPathWithoutExtension, string videoPath)
     {
       if (string.IsNullOrEmpty(outputPathWithoutExtension))

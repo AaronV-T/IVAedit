@@ -13,7 +13,7 @@ namespace IVAE.RedditBot
     {
       try
       {
-        Logger.Init();
+        MediaManipulation.Logger.Init();
 
         Task loopTask = Task.Run(RunProcessLoop);
         while (Console.ReadKey().Key != ConsoleKey.Escape) { }
