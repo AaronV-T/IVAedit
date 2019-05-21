@@ -219,13 +219,14 @@ namespace IVAE.RedditBot
           Func<string, Task> onFailedToProcessPost = async (reason) =>
           {
             Log.Information($"Skipping {mentionComment.Name}: {reason} ({mentionComment.Author}: '{mentionComment.Body}')");
-            await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to process your [request](https://reddit.com{mentionComment.Context}). Reason: {reason}");
+            await PostReplyToFallbackThread($"/u/{mentionComment.Author} I was unable to process your [request](https://reddit.com{mentionComment.Context}).  \nReason: {reason}");
           };
 
           // Verify that the post is safe to process.
-          if (!requestorIsAdmin && !await PostIsSafeToProcess(parentPost, true))
+          Tuple<bool, string> postSafetyInfo = await PostIsSafeToProcess(parentPost, true);
+          if (!requestorIsAdmin && !postSafetyInfo.Item1)
           {
-            await onFailedToProcessPost("Post does not meet limitations. See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_limitations) for more information.");
+            await onFailedToProcessPost($"{postSafetyInfo.Item2} See [here](https://www.reddit.com/r/IVAEbot/wiki/index#wiki_limitations) for more information.");
             continue;
           }
 
@@ -464,12 +465,14 @@ namespace IVAE.RedditBot
 
     private static Uri GetMediaUrlFromPost(RedditThing post)
     {
-      // Comment
-      if (post.Kind == "t1")
+      // Comment or Text Post
+      if (post.Kind == "t1" || (post.IsSelf != null && post.IsSelf.Value))
       {
+        string text = post.Kind == "t1" ? post.Body : post.Selftext;
+
         // Return the first link found in the body.
-        string[] splitBody = post.Body.Split(' ', '(', ')', '\n');
-        foreach (string s in splitBody)
+        string[] splitText = text.Split(' ', '(', ')', '\n');
+        foreach (string s in splitText)
         {
           if (Uri.TryCreate(s, UriKind.Absolute, out Uri uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
             return new Uri(s);
@@ -515,23 +518,29 @@ namespace IVAE.RedditBot
       }
     }
 
-    private async Task<bool> PostIsSafeToProcess(RedditThing post, bool isRootPost)
+    private async Task<Tuple<bool,string>> PostIsSafeToProcess(RedditThing post, bool isRootPost)
     {
       FilterSettings filterSettings = settings.FilterSettings;
 
       // If this is the post with the media file to manipulate: ...
       if (isRootPost)
       {
-        if (post.Score < filterSettings.MinimumPostScore) return false; // Post's score is too low.
+        if (post.Score < filterSettings.MinimumPostScore)
+          return new Tuple<bool, string>(false, $"Post's score is too low (Post Score: {post.Score}; Minimum Required Score: {filterSettings.MinimumPostScore}).");
+
         if (post.Kind == "t1")
         {
-          if (!filterSettings.ProcessEditedComments && (post.Edited == null || post.Edited.Value)) return false; // Comment is edited.
-          if (!filterSettings.ProcessNSFWContent && (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl"))) return false; // Comment is self-marked as NSFW/NSFL.
+          if (!filterSettings.ProcessEditedComments && (post.Edited == null || post.Edited.Value))
+            return new Tuple<bool, string>(false, $"Post is edited.");
+          if (!filterSettings.ProcessNSFWContent && (post.Body.ToLower().Contains("nsfw") || post.Body.ToLower().Contains("nsfl")))
+            return new Tuple<bool, string>(false, $"Post is self-marked as NSFW/NSFL.");
         }
 
         RedditThing user = await redditClient.GetInfoOfUser(post.Author);
-        if (user.CommentKarma == null || user.LinkKarma == null || user.CommentKarma + user.LinkKarma < filterSettings.MinimumPostingAccountKarma) return false; // Posting user's account doesn't have enough karma.
-        if (user.CreatedUtc == null || user.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Today.AddDays(-filterSettings.MinimumPostingAccountAgeInDays)) return false; // Posting user's account isn't old enough.
+        if (user.CommentKarma == null || user.LinkKarma == null || user.CommentKarma + user.LinkKarma < filterSettings.MinimumPostingAccountKarma)
+          return new Tuple<bool, string>(false, $"Posting user's account doesn't have enough karma (Karma: {user.CommentKarma + user.LinkKarma}; Minimum Required Karma: {filterSettings.MinimumPostingAccountKarma}).");
+        if (user.CreatedUtc == null || user.CreatedUtc.Value.UnixTimeToDateTime() > DateTime.Today.AddDays(-filterSettings.MinimumPostingAccountAgeInDays))
+          return new Tuple<bool, string>(false, $"Posting user's account isn't old enough (must be at least {filterSettings.MinimumPostingAccountAgeInDays} days old).");
       }
 
       // If this post is a comment: ...
@@ -542,12 +551,16 @@ namespace IVAE.RedditBot
       // If this post is a link: ...
       else if (post.Kind == "t3")
       {
-        if (!filterSettings.ProcessNSFWContent && (post.Over18 == null || post.Over18.Value)) return false; // Link is flagged NSFW.
-        if (databaseAccessor.GetBlacklistedSubreddit(post.Subreddit) != null) return false; // Subreddit is blacklisted.
-        if (post.SubredditSubscribers == null || post.SubredditSubscribers < filterSettings.MinimumSubredditSubscribers) return false; // Link is in a subreddit that's too small.
-        if (!filterSettings.ProcessPostsInNonPublicSubreddits && (post.SubredditType == null || post.SubredditType != "public")) return false; // Link is in a subreddit that's not public.
+        if (!filterSettings.ProcessNSFWContent && (post.Over18 == null || post.Over18.Value))
+          return new Tuple<bool, string>(false, $"Link is NSFW.");
+        if (databaseAccessor.GetBlacklistedSubreddit(post.Subreddit) != null)
+          return new Tuple<bool, string>(false, $"Subreddit is blacklisted.");
+        if (post.SubredditSubscribers == null || post.SubredditSubscribers < filterSettings.MinimumSubredditSubscribers)
+          return new Tuple<bool, string>(false, $"Subreddit is too small (Subscribers: {post.SubredditSubscribers}; Minimum Required Subscribers: {filterSettings.MinimumSubredditSubscribers}).");
+        if (!filterSettings.ProcessPostsInNonPublicSubreddits && (post.SubredditType == null || post.SubredditType != "public"))
+          return new Tuple<bool, string>(false, $"Subreddit is not public.");
 
-        return true;
+        return new Tuple<bool, string>(true, "Post seems safe.");
       }
       else
         throw new ArgumentException($"Given post '{post.Name}' is not a valid kind '{post.Kind}'.");
