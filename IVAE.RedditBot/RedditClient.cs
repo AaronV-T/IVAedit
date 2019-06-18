@@ -38,10 +38,9 @@ namespace IVAE.RedditBot
       data.Add("api_type", "json");
       data.Add("name", username);
 
-      HttpContent content = new FormUrlEncodedContent(data);
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/block_user", content);
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, $"{BASE_URL}/api/block_user");
+      request.Content = new FormUrlEncodedContent(data);
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit BlockUser Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -53,10 +52,9 @@ namespace IVAE.RedditBot
       data.Add("api_type", "json");
       data.Add("id", fullName);
 
-      HttpContent content = new FormUrlEncodedContent(data);
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/del", content);
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, $"{BASE_URL}/api/del");
+      request.Content = new FormUrlEncodedContent(data);
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit DeletePost Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -76,9 +74,8 @@ namespace IVAE.RedditBot
 
     public async Task<List<RedditThing>> GetInfoOfCommentsAndLinks(string subreddit, List<string> fullNames)
     {
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/r/{subreddit}/api/info.json?id={string.Join(",", fullNames)}");
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"{BASE_URL}/r/{subreddit}/api/info.json?id={string.Join(",", fullNames)}");
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit Comment/Link Info Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -88,9 +85,8 @@ namespace IVAE.RedditBot
 
     public async Task<RedditThing> GetInfoOfUser(string username)
     {
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/user/{username}/about");
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"{BASE_URL}/user/{username}/about");
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit UserAbout Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -106,9 +102,8 @@ namespace IVAE.RedditBot
 
     public async Task<List<RedditThing>> GetUnreadMessages()
     {
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/message/unread.json");
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"{BASE_URL}/message/unread.json");
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit UnreadMessages Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -124,10 +119,9 @@ namespace IVAE.RedditBot
       data.Add("api_type", "json");
       data.Add("id", string.Join(",", messageNames));
 
-      HttpContent content = new FormUrlEncodedContent(data);
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/read_message", content);
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, $"{BASE_URL}/api/read_message");
+      request.Content = new FormUrlEncodedContent(data);
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit MarkMessagesAsRead Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -140,10 +134,9 @@ namespace IVAE.RedditBot
       data.Add("thing_id", parentFullName);
       data.Add("text", text);
 
-      HttpContent content = new FormUrlEncodedContent(data);
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/comment", content);
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, $"{BASE_URL}/api/comment");
+      request.Content = new FormUrlEncodedContent(data);
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit PostComment Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -168,10 +161,9 @@ namespace IVAE.RedditBot
       data.Add("text", description);
       data.Add("title", title);
 
-      HttpContent content = new FormUrlEncodedContent(data);
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.PostAsync($"{BASE_URL}/api/submit", content);
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, $"{BASE_URL}/api/submit");
+      request.Content = new FormUrlEncodedContent(data); 
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       Log.Verbose($"Reddit Submit Response:{Environment.NewLine}{JsonConvert.SerializeObject(JsonConvert.DeserializeObject(responseContent), Formatting.Indented)}");
@@ -185,9 +177,8 @@ namespace IVAE.RedditBot
 
     public async Task<string> Test()
     {
-      await WaitUntilARequestCanBeMade();
-      HttpResponseMessage response = await httpClient.GetAsync($"{BASE_URL}/api/v1/me");
-      SetRatelimitInfo(response);
+      HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"{BASE_URL}/api/v1/me");
+      HttpResponseMessage response = await SendRequestToRedditApi(request);
       string responseContent = await response.Content.ReadAsStringAsync();
 
       return responseContent;
@@ -197,18 +188,27 @@ namespace IVAE.RedditBot
     {
       try
       {
-        List<string> ratelimitRemainingHeaders = response.Headers.GetValues("x-ratelimit-remaining").ToList();
+        if (!response.Headers.TryGetValues("x-ratelimit-remaining", out IEnumerable<string> remainingHeaders))
+          throw new KeyNotFoundException($"x-ratelimit-remaining header not found.\n\nResponse Headers: {JsonConvert.SerializeObject(response.Headers, Formatting.Indented)}\n\nResponse Content: { JsonConvert.SerializeObject(response.Content, Formatting.Indented) }");
+
+        List<string> ratelimitRemainingHeaders = remainingHeaders.ToList();
         if (ratelimitRemainingHeaders != null && ratelimitRemainingHeaders.Count > 0)
           ratelimitRemaining = (int)float.Parse(ratelimitRemainingHeaders[0]);
 
-        List<string> ratelimitResetHeaders = response.Headers.GetValues("x-ratelimit-reset").ToList();
+        if (!response.Headers.TryGetValues("x-ratelimit-reset", out IEnumerable<string> resetHeaders))
+          throw new KeyNotFoundException($"x-ratelimit-reset header not found.\n\nResponse Headers: {JsonConvert.SerializeObject(response.Headers, Formatting.Indented)}\n\nResponse Content: { JsonConvert.SerializeObject(response.Content, Formatting.Indented) }");
+
+        List<string> ratelimitResetHeaders = resetHeaders.ToList();
         if (ratelimitResetHeaders != null && ratelimitResetHeaders.Count > 0)
           ratelimitResetTime = DateTime.Now.AddSeconds(int.Parse(ratelimitResetHeaders[0]));
 
         Log.Verbose($"RateLimitRemaining: {ratelimitRemaining}.");
       }
-      catch (Exception)
+      catch (Exception ex)
       {
+        if (ex is KeyNotFoundException)
+          throw;
+
         throw new Exception($"Could not get rate limit headers from Reddit response.\n\nResponse Headers: {JsonConvert.SerializeObject(response.Headers, Formatting.Indented)}\n\nResponse Content: { JsonConvert.SerializeObject(response.Content, Formatting.Indented) }");
       }
     }
@@ -251,33 +251,42 @@ namespace IVAE.RedditBot
 
     private async Task<OAuthTokenInfo> GetOAuthToken(string appId, string clientSecret, string userName, string password)
     {
-      HttpClient client = new HttpClient();
-
-      byte[] authorizationBytes = Encoding.ASCII.GetBytes($"{appId}:{clientSecret}");
-      client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("basic", Convert.ToBase64String(authorizationBytes));
-
-      HttpResponseMessage response = await client.PostAsync($"https://www.reddit.com/api/v1/access_token?grant_type=password&username={userName}&password={password}", null);
-
-      string responseContent = await response.Content.ReadAsStringAsync();
-      if (response.IsSuccessStatusCode)
+      using (HttpClient client = new HttpClient())
       {
-        Dictionary<string, string> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent);
+        byte[] authorizationBytes = Encoding.ASCII.GetBytes($"{appId}:{clientSecret}");
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("basic", Convert.ToBase64String(authorizationBytes));
 
-        if (deserializedResponse.ContainsKey("error"))
+        while (true)
         {
-          throw new Exception($"Error getting OAuthToken from Reddit: '{deserializedResponse["error"]}'.");
+          try
+          {
+            HttpResponseMessage response = await client.PostAsync($"https://www.reddit.com/api/v1/access_token?grant_type=password&username={userName}&password={password}", null);
+
+            string responseContent = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+              throw new HttpRequestException($"Error requesting OAuth token: '{responseContent}'.");
+
+            Dictionary<string, string> deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent);
+            if (deserializedResponse.ContainsKey("error"))
+            {
+              throw new Exception($"Error getting OAuthToken from Reddit: '{deserializedResponse["error"]}'.");
+            }
+
+            return new OAuthTokenInfo
+            {
+              AccessToken = deserializedResponse["access_token"],
+              TokenType = deserializedResponse["token_type"],
+              ExpirationDate = DateTime.Now.AddSeconds(int.Parse(deserializedResponse["expires_in"])),
+              Scope = deserializedResponse["scope"]
+            };
+          }
+          catch (Exception ex) // TODO: Figure out what type of exception to catch for when reddit is temporarily down and only catch that type.
+          {
+            Log.Warning(ex, $"Exception caught in {this.GetType().Name}.GetOAuthToken(). Will retry in a moment.");
+            await Task.Delay(5000);
+          }
         }
-
-        return new OAuthTokenInfo
-        {
-          AccessToken = deserializedResponse["access_token"],
-          TokenType = deserializedResponse["token_type"],
-          ExpirationDate = DateTime.Now.AddSeconds(int.Parse(deserializedResponse["expires_in"])),
-          Scope = deserializedResponse["scope"]
-        };
       }
-      else
-        throw new HttpRequestException($"Error requesting OAuth token: '{responseContent}'.");
     }
 
     private List<RedditThing> GetThingsFromResponse(string responseContent)
@@ -305,6 +314,30 @@ namespace IVAE.RedditBot
       }
 
       return things;
+    }
+
+    private async Task<HttpResponseMessage> SendRequestToRedditApi(HttpRequestMessage request)
+    {
+      while (true)
+      {
+        await WaitUntilARequestCanBeMade();
+        HttpResponseMessage response = await httpClient.SendAsync(request);
+
+        try
+        {
+          SetRatelimitInfo(response);
+          return response;
+        }
+        catch (Exception ex)
+        {
+          if (!(ex is KeyNotFoundException))
+            throw;
+
+          Log.Warning(ex, "Reddit seems to be temporarily down. Retrying request in a moment.");
+
+          await Task.Delay(5000);
+        }
+      }
     }
   }
 }
