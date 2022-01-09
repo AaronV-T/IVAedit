@@ -211,8 +211,8 @@ namespace IVAE.MediaManipulation
     /// <returns>A tuple of the x and y offsets between the modelImage and the observedImage.</returns>
     public static Tuple<int, int> GetXYOffsets(string modelImagePath, string observedImagePath)
     {
-      using (Emgu.CV.Mat mat1 = Emgu.CV.CvInvoke.Imread(modelImagePath, Emgu.CV.CvEnum.LoadImageType.AnyColor))
-      using (Emgu.CV.Mat mat2 = Emgu.CV.CvInvoke.Imread(observedImagePath, Emgu.CV.CvEnum.LoadImageType.AnyColor))
+      using (Emgu.CV.Mat mat1 = Emgu.CV.CvInvoke.Imread(modelImagePath, ImreadModes.AnyColor))
+      using (Emgu.CV.Mat mat2 = Emgu.CV.CvInvoke.Imread(observedImagePath, ImreadModes.AnyColor))
       {
         return GetXYOffsets(mat1, mat2);
       }

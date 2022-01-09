@@ -417,7 +417,7 @@ namespace IVAE.MediaManipulation
         {
           using (Mat pano = new Mat())
           {
-            if (!stitcher.Stitch(sourceMats, pano))
+            if (stitcher.Stitch(sourceMats, pano) != Emgu.CV.Stitching.Stitcher.Status.Ok)
               throw new Exception($"Failed to stitch images.");
 
             return pano.ToBitmap();
