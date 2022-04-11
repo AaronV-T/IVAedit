@@ -125,17 +125,20 @@ namespace IVAE.MediaManipulation
       List<System.Drawing.Bitmap> sourceImages = new List<System.Drawing.Bitmap>();
       try
       {
+        for (int i = 0; i < fileNames.Length; i++)
+        {
+          sourceImages.Add(new System.Drawing.Bitmap(fileNames[i]));
+        }
+        
         ImageManipulator imageManipulator = new ImageManipulator();
 
         if (alignImages || writeFileNames || width != 0 || height != 0)
         {
           OnChangeStep?.Invoke("Editing Images Step 1");
 
-          for (int i = 0; i < fileNames.Length; i++)
+          for (int i = 0; i < sourceImages.Count; i++)
           {
-            ProgressUpdate(i / (float)fileNames.Length);
-
-            sourceImages.Add(new System.Drawing.Bitmap(fileNames[i]));
+            ProgressUpdate(i / (float)sourceImages.Count);
 
             // If cropping enabled: ...
             if (width != 0 || height != 0)
@@ -844,35 +847,43 @@ ReverseVideo(outputPath, filePath);
 
       OnChangeStep?.Invoke($"Calculating Animation Delays");
       var animationDelays = new List<int>();
-      int delayPerTurn = (int)(timelapseLengthInSeconds * 100) / (turns[turns.Count - 1] - turns[0]);
+      int delayPerTurnInCs = 60;
       for (int i = 0; i < mainImageFilePaths.Count; i++)
 			{
         OnProgressUpdate?.Invoke(i / (float)mainImageFilePaths.Count);
 
         if (i == mainImageFilePaths.Count - 1)
         {
-          animationDelays.Add(delayPerTurn);
+          animationDelays.Add(delayPerTurnInCs);
           break;
         }
 
         int thisTurn = turns[i];
         int nextTurn = turns[i + 1];
 
-        animationDelays.Add(delayPerTurn * (nextTurn - thisTurn));
+        animationDelays.Add(delayPerTurnInCs * (nextTurn - thisTurn));
       }
 
       string gifPath = ConvertImagesToGif(mainImageFilePaths.ToArray(), 0, 0, 0, 0, animationDelays, 0, 32, false, false, null);
-      string videoPath = ConvertGifToVideo(gifPath);
-      
-      string outputVideoPath = $"{Path.GetDirectoryName(videoFilePaths[0])}\\tww3video{GetCurrentTimeShort()}{Path.GetExtension(videoPath)}";
-      new VideoManipulator().ExtendLastFrame(outputVideoPath, videoPath, endLengthInSeconds);
+      string video1Path = ConvertGifToVideo(gifPath);
+
+      OnChangeStep?.Invoke($"Adjusting Video Speed");
+      float csPerTurn = (float)(timelapseLengthInSeconds * 100) / (turns[turns.Count - 1] - turns[0]);
+      string video2Path = $"{Path.GetDirectoryName(video1Path)}\\tww3videoraw{Path.GetExtension(video1Path)}";
+      VideoManipulator videoManipulator = new VideoManipulator();
+      videoManipulator.OnProgress += ProgressUpdate;
+      videoManipulator.AdjustVideoSpeed(video2Path, video1Path, delayPerTurnInCs / csPerTurn, 20);
+      videoManipulator.OnProgress -= ProgressUpdate;
+
+      string finalVideoPath = $"{Path.GetDirectoryName(videoFilePaths[0])}\\tww3video{GetCurrentTimeShort()}{Path.GetExtension(video2Path)}";
+      new VideoManipulator().ExtendLastFrame(finalVideoPath, video2Path, endLengthInSeconds);
 
       foreach (string directoryPath in imageDirectoryPaths)
 			{
          Directory.Delete(directoryPath, true);
 			}
 
-      return outputVideoPath;
+      return finalVideoPath;
     }
   }
 }
