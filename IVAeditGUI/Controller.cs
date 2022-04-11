@@ -269,6 +269,26 @@ namespace IVAeditGUI
           )
         },
         {
+          "TWW3 To MP4",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Timelapse Seconds", new InputSetupInfo(ControlType.TextBox) },
+              { "End Seconds", new InputSetupInfo(ControlType.TextBox) },
+              { "Map X", new InputSetupInfo(ControlType.TextBox) },
+              { "Map Y", new InputSetupInfo(ControlType.TextBox) },
+              { "Map Width", new InputSetupInfo(ControlType.TextBox) },
+              { "Map Height", new InputSetupInfo(ControlType.TextBox) },
+              { "Turn X", new InputSetupInfo(ControlType.TextBox) },
+              { "Turn Y", new InputSetupInfo(ControlType.TextBox) },
+              { "Turn Width", new InputSetupInfo(ControlType.TextBox) },
+              { "Turn Height", new InputSetupInfo(ControlType.TextBox) },
+            },
+            Tww3ToMp4
+          )
+        },
+        {
           "Video To Images",
           new OperationSetupInfo
           (
@@ -1332,6 +1352,68 @@ namespace IVAeditGUI
       });
 
       mainWindow.SetMessage($"TWW Timelapse '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
+    private async Task Tww3ToMp4()
+    {
+      const string OP_NAME = "TWW3 To MP4";
+      string timelapseLengthInSecondsText = GetInputValue(OP_NAME, "Timelapse Seconds");
+      string endLengthInSecondsText = GetInputValue(OP_NAME, "End Seconds");
+      string mapXInputText = GetInputValue(OP_NAME, "Map X");
+      string mapYInputText = GetInputValue(OP_NAME, "Map Y");
+      string mapWidthInputText = GetInputValue(OP_NAME, "Map Width");
+      string mapHeightInputText = GetInputValue(OP_NAME, "Map Height");
+      string turnNumberXInputText = GetInputValue(OP_NAME, "Turn X");
+      string turnNumberYInputText = GetInputValue(OP_NAME, "Turn Y");
+      string turnNumberWidthInputText = GetInputValue(OP_NAME, "Turn Width");
+      string turnNumberHeightInputText = GetInputValue(OP_NAME, "Turn Height");
+
+      if (string.IsNullOrEmpty(timelapseLengthInSecondsText) || !double.TryParse(timelapseLengthInSecondsText, out double timelapseLengthInSeconds))
+        throw new ArgumentException($"Timelapse Seconds coordinate is not a valid double.");
+      if (string.IsNullOrEmpty(endLengthInSecondsText) || !double.TryParse(endLengthInSecondsText, out double endLengthInSeconds))
+        throw new ArgumentException($"End Seconds is not a valid double.");
+      if (string.IsNullOrEmpty(mapXInputText) || !int.TryParse(mapXInputText, out int mapX))
+        throw new ArgumentException($"Map X coordinate is not a valid integer.");
+      if (string.IsNullOrEmpty(mapYInputText) || !int.TryParse(mapYInputText, out int mapY))
+        throw new ArgumentException($"Map Y coordinate is not a valid integer.");
+      if (string.IsNullOrEmpty(mapWidthInputText) || !int.TryParse(mapWidthInputText, out int mapWidth))
+        throw new ArgumentException($"Map Width is not a valid integer.");
+      if (string.IsNullOrEmpty(mapHeightInputText) || !int.TryParse(mapHeightInputText, out int mapHeight))
+        throw new ArgumentException($"Map Height is not a valid integer.");
+      if (string.IsNullOrEmpty(turnNumberXInputText) || !int.TryParse(turnNumberXInputText, out int turnNumberX))
+        throw new ArgumentException($"Turn Number X coordinate is not a valid integer.");
+      if (string.IsNullOrEmpty(turnNumberYInputText) || !int.TryParse(turnNumberYInputText, out int turnNumberY))
+        throw new ArgumentException($"Turn Number Y coordinate is not a valid integer.");
+      if (string.IsNullOrEmpty(turnNumberWidthInputText) || !int.TryParse(turnNumberWidthInputText, out int turnNumberWidth))
+        throw new ArgumentException($"Turn Number Width is not a valid integer.");
+      if (string.IsNullOrEmpty(turnNumberHeightInputText) || !int.TryParse(turnNumberHeightInputText, out int turnNumberHeight))
+        throw new ArgumentException($"Turn Number Height is not a valid integer.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog.Title = "Select Videos.";
+      openFileDialog.Multiselect = true;
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.Tww3ToMp4(openFileDialog.FileNames.ToList(), timelapseLengthInSeconds, endLengthInSeconds, mapX, mapY, mapWidth, mapHeight,
+          turnNumberX, turnNumberY, turnNumberWidth, turnNumberHeight);
+      });
+
+      mainWindow.SetMessage($"TWW3 Timelapse '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       System.Diagnostics.Process.Start(outputPath);
     }
 

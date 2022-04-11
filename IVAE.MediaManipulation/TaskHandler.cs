@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -104,7 +105,7 @@ namespace IVAE.MediaManipulation
       return outputPath;
     }
 
-    public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, int frameDelay, int finalDelay, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType imageAlignmentType)
+    public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, int frameDelay, int finalDelay, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType? imageAlignmentType)
     {
       List<int> animationDelays = new List<int>();
 
@@ -119,7 +120,7 @@ namespace IVAE.MediaManipulation
       return ConvertImagesToGif(fileNames, x, y, width, height, animationDelays, loops, fontSize, writeFileNames, alignImages, imageAlignmentType);
     }
 
-    public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, List<int> animationDelays, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType imageAlignmentType)
+    public string ConvertImagesToGif(string[] fileNames, int x, int y, int width, int height, List<int> animationDelays, int loops, int fontSize, bool writeFileNames, bool alignImages, ImageAlignmentType? imageAlignmentType)
     {
       List<System.Drawing.Bitmap> sourceImages = new List<System.Drawing.Bitmap>();
       try
@@ -188,7 +189,7 @@ namespace IVAE.MediaManipulation
                 referenceIndex = index + 1;
 
               DateTime start = DateTime.Now;
-              System.Drawing.Bitmap alignedImage = imageManipulator.GetAlignedImage(sourceImages[index], sourceImages[referenceIndex], imageAlignmentType);
+              System.Drawing.Bitmap alignedImage = imageManipulator.GetAlignedImage(sourceImages[index], sourceImages[referenceIndex], imageAlignmentType.Value);
               Console.WriteLine($"GetAlignedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
               sourceImages[index].Dispose();
               sourceImages[index] = alignedImage;
@@ -619,6 +620,13 @@ ReverseVideo(outputPath, filePath);
       return WarhammerTimelapseHelper(videoFilePath, x, y, width, height);
     }
 
+    public string Tww3ToMp4(List<string> videoFilePaths, double timelapseLengthInSeconds, double endLengthInSeconds,
+      int mapX, int mapY, int mapWidth, int mapHeight,
+      int turnNumberX, int turnNumberY, int turnNumberWidth, int turnNumberHeight)
+    {
+      return Warhammer3TimelapseHelper(videoFilePaths, timelapseLengthInSeconds, endLengthInSeconds, mapX, mapY, mapWidth, mapHeight, turnNumberX, turnNumberY, turnNumberWidth, turnNumberHeight);
+    }
+
     private string GetCurrentTimeShort()
     {
       byte[] bytes = BitConverter.GetBytes(long.Parse(DateTime.Now.ToString("yyMMddHHmmss")));
@@ -730,6 +738,141 @@ ReverseVideo(outputPath, filePath);
       System.IO.Directory.Delete(imageDirectory, true);
 
       return outputPath;
+    }
+
+    private string Warhammer3TimelapseHelper(List<string> videoFilePaths, double timelapseLengthInSeconds, double endLengthInSeconds,
+      int mapX, int mapY, int mapWidth, int mapHeight, int turnNumberX, int turnNumberY, int turnNumberWidth, int turnNumberHeight)
+    {
+      var imageDirectoryPaths = new List<string>();
+      var mainImageFilePaths = new List<string>();
+      var turns = new List<int>();
+      for (int i = 0; i < videoFilePaths.Count; i++)
+      {
+        string videoFilePath = videoFilePaths[i];
+
+        OnChangeStep?.Invoke($"Getting Images From Video {i + 1}");
+
+        imageDirectoryPaths.Add(ConvertVideoToImages(videoFilePath, (1 / .35).ToString()));
+        List<string> imagePaths = Directory.GetFiles(imageDirectoryPaths[i]).ToList();
+        imagePaths.Sort(new NaturalStringComparer());
+
+        OnChangeStep?.Invoke($"Getting Turn Numbers For Video {i + 1}");
+        var turnImagePaths = new Dictionary<decimal, string>();
+        for (int j = 0; j < imagePaths.Count; j++)
+        {
+          OnProgressUpdate?.Invoke(j / (float)imagePaths.Count);
+
+          int turn;
+          using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(imagePaths[j]))
+          using (System.Drawing.Bitmap cbmp = new ImageManipulator().GetCroppedImage(bmp, turnNumberX, turnNumberY, turnNumberWidth, turnNumberHeight))
+          using (ImageMagick.MagickImage magickImage = new ImageMagick.MagickImage(cbmp))
+          {
+            magickImage.Grayscale();
+            magickImage.Resize(new ImageMagick.MagickGeometry(magickImage.Width * 10, magickImage.Height * 10));
+            using (System.Drawing.Bitmap grayBmp = magickImage.ToBitmap())
+            {
+              string temppath = $@"{Path.GetDirectoryName(imagePaths[j])}\{Path.GetFileNameWithoutExtension(imagePaths[j])}_temp{Path.GetExtension(imagePaths[j])}";
+              grayBmp.Save(temppath);
+              turn = (int)ImageFeatureDetector.GetNumberFromImage(temppath);
+              //Console.WriteLine($"{System.IO.Path.GetFileNameWithoutExtension(imagePaths[i])} -> turn{turn}");
+              File.Delete(temppath);
+            }
+          }
+
+          string newImagePath = $@"{Path.GetDirectoryName(imagePaths[j])}\turn{turn}{Path.GetExtension(imagePaths[j])}";
+
+          if (!turns.Contains(turn))
+          {
+            if (i == 0)
+            {
+              mainImageFilePaths.Add(newImagePath);
+              turns.Add(turn);
+            }
+            else
+						{
+              Console.WriteLine($"Turn {turn} was not found in the first video; not adding it for video {i + 1}.");
+              continue;
+						}
+          }
+          
+          if (File.Exists(newImagePath))
+					{
+            File.Delete(newImagePath);
+					}
+
+          new ImageManipulator().CropImage(newImagePath, imagePaths[j], mapX, mapY, mapWidth, mapHeight);
+
+          File.Delete(imagePaths[j]);
+        }
+      }
+
+      OnChangeStep?.Invoke($"Combining Images");
+      List<string> fileNames = Directory.GetFiles(imageDirectoryPaths[0]).Select(path => Path.GetFileName(path)).ToList();
+      for (int i = 0; i < fileNames.Count; i++)
+			{
+        OnProgressUpdate?.Invoke(i / (float)fileNames.Count);
+        string mainImageFilePath = $"{imageDirectoryPaths[0]}\\{fileNames[i]}";
+
+        for (int j = 1; j < imageDirectoryPaths.Count; j++)
+				{
+          string currentImageFilePath = $"{imageDirectoryPaths[j]}\\{fileNames[i]}";
+
+          if (!File.Exists(currentImageFilePath))
+					{
+            string turn = Path.GetFileNameWithoutExtension(fileNames[i]).Substring(fileNames[i].IndexOf("turn") + 4);
+            Console.WriteLine($"Turn {turn} was not found in the video {j + 1} video; removing it from video 1.");
+            File.Delete(mainImageFilePath);
+            mainImageFilePaths.Remove(mainImageFilePath);
+            turns.Remove(int.Parse(turn));
+
+            break;
+					}
+
+          string tempImageFilePath = $"{imageDirectoryPaths[0]}\\temp{Path.GetExtension(mainImageFilePath)}";
+          using (var bitmap1 = new System.Drawing.Bitmap(mainImageFilePath))
+          using (var bitmap2 = new System.Drawing.Bitmap(currentImageFilePath))
+          using (var combinedBitmap = new ImageManipulator().GetCombinedImage(bitmap1, bitmap2))
+					{
+            combinedBitmap.Save(tempImageFilePath);
+          }
+
+          File.Delete(mainImageFilePath);
+          File.Move(tempImageFilePath, mainImageFilePath);
+          File.Delete(currentImageFilePath);
+        }
+      }
+
+      OnChangeStep?.Invoke($"Calculating Animation Delays");
+      var animationDelays = new List<int>();
+      int delayPerTurn = (int)(timelapseLengthInSeconds * 100) / (turns[turns.Count - 1] - turns[0]);
+      for (int i = 0; i < mainImageFilePaths.Count; i++)
+			{
+        OnProgressUpdate?.Invoke(i / (float)mainImageFilePaths.Count);
+
+        if (i == mainImageFilePaths.Count - 1)
+        {
+          animationDelays.Add(delayPerTurn);
+          break;
+        }
+
+        int thisTurn = turns[i];
+        int nextTurn = turns[i + 1];
+
+        animationDelays.Add(delayPerTurn * (nextTurn - thisTurn));
+      }
+
+      string gifPath = ConvertImagesToGif(mainImageFilePaths.ToArray(), 0, 0, 0, 0, animationDelays, 0, 32, false, false, null);
+      string videoPath = ConvertGifToVideo(gifPath);
+      
+      string outputVideoPath = $"{Path.GetDirectoryName(videoFilePaths[0])}\\tww3video{GetCurrentTimeShort()}{Path.GetExtension(videoPath)}";
+      new VideoManipulator().ExtendLastFrame(outputVideoPath, videoPath, endLengthInSeconds);
+
+      foreach (string directoryPath in imageDirectoryPaths)
+			{
+         Directory.Delete(directoryPath, true);
+			}
+
+      return outputVideoPath;
     }
   }
 }
