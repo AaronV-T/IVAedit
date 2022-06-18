@@ -295,6 +295,22 @@ namespace IVAE.MediaManipulation
       fpr.Run($"-i \"{gifPath}\" -movflags faststart -pix_fmt yuv420p -vf \"scale = trunc(iw / 2) * 2:trunc(ih / 2) * 2\" \"{outputPath}\"");
     }
 
+    public void MakeVideoFromImages(string outputPath, string imageDirectoryPath, string imagesFileNamePattern, double fps)
+		{
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(imageDirectoryPath))
+        throw new ArgumentNullException(nameof(imageDirectoryPath));
+      if (string.IsNullOrEmpty(imagesFileNamePattern))
+        throw new ArgumentNullException(nameof(imagesFileNamePattern));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.Run($"-framerate {fps} -i \"{imageDirectoryPath}\\{imagesFileNamePattern}\" \"{outputPath}\"");
+    }
+
     public void MakeImagesFromVideo(string outputDirectory, string videoPath, string fps)
     {
       if (string.IsNullOrEmpty(outputDirectory))

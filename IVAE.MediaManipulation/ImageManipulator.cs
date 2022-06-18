@@ -257,34 +257,47 @@ namespace IVAE.MediaManipulation
       }
     }
 
-    public Bitmap GetCombinedImage(Bitmap originalImage, Bitmap updateImage)
+    public Bitmap GetCombinedImage(Bitmap originalImage, Bitmap updateImage, bool simpleCombine)
     {
-      Tuple<int,int> offsets = ImageFeatureDetector.GetXYOffsets(originalImage, updateImage);
-
       int width, height, originalImageX, originalImageY, updateImageX, updateImageY;
-      if (offsets.Item1 >= 0) {
-        width = (originalImage.Width > offsets.Item1 + updateImage.Width) ? originalImage.Width : offsets.Item1 + updateImage.Width;
+      if (simpleCombine)
+      {
+        width = originalImage.Width + updateImage.Width;
+        height = Math.Max(originalImage.Height, updateImage.Height);
         originalImageX = 0;
-        updateImageX = offsets.Item1;
-      }
-      else
-      {
-        width = -offsets.Item1 + ((originalImage.Width > offsets.Item1 + updateImage.Width) ? originalImage.Width : offsets.Item1 + updateImage.Width);
-        originalImageX = -offsets.Item1;
-        updateImageX = 0;
-      }
-
-      if (offsets.Item2 >= 0)
-      {
-        height = (originalImage.Height > offsets.Item2 + updateImage.Height) ? originalImage.Height : offsets.Item2 + updateImage.Height;
         originalImageY = 0;
-        updateImageY = offsets.Item2;
+        updateImageX = originalImage.Width;
+        updateImageY = 0;
       }
       else
       {
-        height = -offsets.Item2 + ((originalImage.Height > offsets.Item2 + updateImage.Height) ? originalImage.Height : offsets.Item2 + updateImage.Height);
-        originalImageY = -offsets.Item2;
-        updateImageY = 0;
+        Tuple<int, int> offsets = ImageFeatureDetector.GetXYOffsets(originalImage, updateImage);
+
+        if (offsets.Item1 >= 0)
+        {
+          width = (originalImage.Width > offsets.Item1 + updateImage.Width) ? originalImage.Width : offsets.Item1 + updateImage.Width;
+          originalImageX = 0;
+          updateImageX = offsets.Item1;
+        }
+        else
+        {
+          width = -offsets.Item1 + ((originalImage.Width > offsets.Item1 + updateImage.Width) ? originalImage.Width : offsets.Item1 + updateImage.Width);
+          originalImageX = -offsets.Item1;
+          updateImageX = 0;
+        }
+
+        if (offsets.Item2 >= 0)
+        {
+          height = (originalImage.Height > offsets.Item2 + updateImage.Height) ? originalImage.Height : offsets.Item2 + updateImage.Height;
+          originalImageY = 0;
+          updateImageY = offsets.Item2;
+        }
+        else
+        {
+          height = -offsets.Item2 + ((originalImage.Height > offsets.Item2 + updateImage.Height) ? originalImage.Height : offsets.Item2 + updateImage.Height);
+          originalImageY = -offsets.Item2;
+          updateImageY = 0;
+        }
       }
 
       Bitmap bmp = new Bitmap(width, height);

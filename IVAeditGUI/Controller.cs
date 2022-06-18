@@ -298,7 +298,23 @@ namespace IVAeditGUI
             },
             VideoToImages
           )
-        }
+        },
+        {
+          "WoW To MP4",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+              { "Timelapse Seconds", new InputSetupInfo(ControlType.TextBox) },
+              { "End Seconds", new InputSetupInfo(ControlType.TextBox) },
+              { "Level X", new InputSetupInfo(ControlType.TextBox) },
+              { "Level Y", new InputSetupInfo(ControlType.TextBox) },
+              { "Level Width", new InputSetupInfo(ControlType.TextBox) },
+              { "Level Height", new InputSetupInfo(ControlType.TextBox) },
+            },
+            WowToMp4
+          )
+        },
       };
 
       try
@@ -1447,6 +1463,67 @@ namespace IVAeditGUI
       mainWindow.SetMessage($"Images created '{outputDirectory}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
       System.Diagnostics.Process.Start(outputDirectory);
 
+    }
+
+    private async Task WowToMp4()
+    {
+      const string OP_NAME = "WoW To MP4";
+      string timelapseLengthInSecondsText = GetInputValue(OP_NAME, "Timelapse Seconds");
+      string endLengthInSecondsText = GetInputValue(OP_NAME, "End Seconds");
+      string levelNumberXInputText = GetInputValue(OP_NAME, "Level X");
+      string levelNumberYInputText = GetInputValue(OP_NAME, "Level Y");
+      string levelNumberWidthInputText = GetInputValue(OP_NAME, "Level Width");
+      string levelNumberHeightInputText = GetInputValue(OP_NAME, "Level Height");
+
+      if (string.IsNullOrEmpty(timelapseLengthInSecondsText) || !double.TryParse(timelapseLengthInSecondsText, out double timelapseLengthInSeconds))
+        throw new ArgumentException($"Timelapse Seconds coordinate is not a valid double.");
+      if (string.IsNullOrEmpty(endLengthInSecondsText) || !double.TryParse(endLengthInSecondsText, out double endLengthInSeconds))
+        throw new ArgumentException($"End Seconds is not a valid double.");
+      if (string.IsNullOrEmpty(levelNumberXInputText) || !int.TryParse(levelNumberXInputText, out int levelNumberX))
+        throw new ArgumentException($"Turn Number X coordinate is not a valid integer.");
+      if (string.IsNullOrEmpty(levelNumberYInputText) || !int.TryParse(levelNumberYInputText, out int levelNumberY))
+        throw new ArgumentException($"Turn Number Y coordinate is not a valid integer.");
+      if (string.IsNullOrEmpty(levelNumberWidthInputText) || !int.TryParse(levelNumberWidthInputText, out int levelNumberWidth))
+        throw new ArgumentException($"Turn Number Width is not a valid integer.");
+      if (string.IsNullOrEmpty(levelNumberHeightInputText) || !int.TryParse(levelNumberHeightInputText, out int levelNumberHeight))
+        throw new ArgumentException($"Turn Number Height is not a valid integer.");
+
+      System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
+      openFileDialog1.Title = "Select screenshot images.";
+      openFileDialog1.Multiselect = true;
+
+      if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog2.Filter = $"Video File|{GetVideoFormatsFilterString()}";
+      openFileDialog2.Title = "Select map video.";
+      openFileDialog2.Multiselect = false;
+
+      if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.WowToMp4(openFileDialog1.FileNames.ToList(), openFileDialog2.FileName, timelapseLengthInSeconds, endLengthInSeconds,
+          levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight);
+      });
+
+      mainWindow.SetMessage($"WoW Timelapse '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
     }
     #endregion
 

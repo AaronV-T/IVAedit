@@ -157,7 +157,7 @@ namespace IVAE.MediaManipulation
             if (alignImages && imageAlignmentType == ImageAlignmentType.MAP && i > 0)
             {
               DateTime start = DateTime.Now;
-              System.Drawing.Bitmap combinedImage = imageManipulator.GetCombinedImage(sourceImages[i - 1], sourceImages[i]);
+              System.Drawing.Bitmap combinedImage = imageManipulator.GetCombinedImage(sourceImages[i - 1], sourceImages[i], false);
               Console.WriteLine($"GetCombinedImage took {Math.Round((DateTime.Now - start).TotalMilliseconds)}ms.");
               sourceImages[i].Dispose();
               sourceImages[i] = combinedImage;
@@ -630,6 +630,12 @@ ReverseVideo(outputPath, filePath);
       return Warhammer3TimelapseHelper(videoFilePaths, timelapseLengthInSeconds, endLengthInSeconds, mapX, mapY, mapWidth, mapHeight, turnNumberX, turnNumberY, turnNumberWidth, turnNumberHeight);
     }
 
+    public string WowToMp4(List<string> screenshotsFilePaths, string mapVideoFilePath, double timelapseLengthInSeconds, double endLengthInSeconds,
+      int levelNumberX, int levelNumberY, int levelNumberWidth, int levelNumberHeight)
+    {
+      return WowTimelapseHelper(screenshotsFilePaths, mapVideoFilePath, timelapseLengthInSeconds, endLengthInSeconds, levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight);
+    }
+
     private string GetCurrentTimeShort()
     {
       byte[] bytes = BitConverter.GetBytes(long.Parse(DateTime.Now.ToString("yyMMddHHmmss")));
@@ -834,7 +840,7 @@ ReverseVideo(outputPath, filePath);
           string tempImageFilePath = $"{imageDirectoryPaths[0]}\\temp{Path.GetExtension(mainImageFilePath)}";
           using (var bitmap1 = new System.Drawing.Bitmap(mainImageFilePath))
           using (var bitmap2 = new System.Drawing.Bitmap(currentImageFilePath))
-          using (var combinedBitmap = new ImageManipulator().GetCombinedImage(bitmap1, bitmap2))
+          using (var combinedBitmap = new ImageManipulator().GetCombinedImage(bitmap1, bitmap2, false))
 					{
             combinedBitmap.Save(tempImageFilePath);
           }
@@ -882,6 +888,89 @@ ReverseVideo(outputPath, filePath);
 			{
          Directory.Delete(directoryPath, true);
 			}
+
+      return finalVideoPath;
+    }
+
+    private string WowTimelapseHelper(List<string> screenshotsFilePaths, string mapVideoFilePath, double timelapseLengthInSeconds, double endLengthInSeconds,
+      int levelNumberX, int levelNumberY, int levelNumberWidth, int levelNumberHeight)
+    {
+      OnChangeStep?.Invoke($"Getting Images From Video");
+
+      screenshotsFilePaths.Sort(new NaturalStringComparer());
+
+      var mapVideoMediaFileInfo = new MediaFileInfo(mapVideoFilePath);
+      double fpsToExtractImagesFromMapVideo = 24 * (timelapseLengthInSeconds / mapVideoMediaFileInfo.Duration.Value);
+      if (fpsToExtractImagesFromMapVideo > mapVideoMediaFileInfo.VideoStreams[0].AvgFrameRate) fpsToExtractImagesFromMapVideo = mapVideoMediaFileInfo.VideoStreams[0].AvgFrameRate.Value;
+      string videoImagesDirectoryPath = ConvertVideoToImages(mapVideoFilePath, 24.ToString());
+      List<string> videoImagesPaths = Directory.GetFiles(videoImagesDirectoryPath).ToList();
+      videoImagesPaths.Sort(new NaturalStringComparer());
+
+      OnChangeStep?.Invoke($"Combining Images From Screenshots and Video");
+      int currentScreenshotIndex = 0;
+      var combinedImagesPaths = new List<string>();
+      for (int i = 0; i < videoImagesPaths.Count; i++)
+      {
+        OnProgressUpdate?.Invoke(i / (float)videoImagesPaths.Count);
+
+        int levelFromVideoImage;
+        using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(videoImagesPaths[i]))
+        using (System.Drawing.Bitmap cbmp = new ImageManipulator().GetCroppedImage(bmp, levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight))
+        using (ImageMagick.MagickImage magickImage = new ImageMagick.MagickImage(cbmp))
+        {
+          magickImage.Grayscale();
+          magickImage.Resize(new ImageMagick.MagickGeometry(magickImage.Width * 10, magickImage.Height * 10));
+          using (System.Drawing.Bitmap grayBmp = magickImage.ToBitmap())
+          {
+            string temppath = $@"{Path.GetDirectoryName(videoImagesPaths[i])}\{Path.GetFileNameWithoutExtension(videoImagesPaths[i])}_temp{Path.GetExtension(videoImagesPaths[i])}";
+            grayBmp.Save(temppath);
+            levelFromVideoImage = (int)ImageFeatureDetector.GetNumberFromImage(temppath);
+            File.Delete(temppath);
+          }
+        }
+
+        if (!int.TryParse(Path.GetFileNameWithoutExtension(screenshotsFilePaths[currentScreenshotIndex]), out int levelFromCurrentScreenshot))
+        {
+          throw new Exception($"Screenshot file at '{Path.GetFileName(screenshotsFilePaths[currentScreenshotIndex])}' must have its file name be a positive integer.");
+        }
+
+        if (levelFromVideoImage > levelFromCurrentScreenshot)
+        {
+          if (currentScreenshotIndex < screenshotsFilePaths.Count - 2)
+          {
+            if (!int.TryParse(Path.GetFileNameWithoutExtension(screenshotsFilePaths[currentScreenshotIndex + 1]), out int levelFromNextScreenshot))
+            {
+              throw new Exception($"Screenshot file at '{Path.GetFileName(screenshotsFilePaths[currentScreenshotIndex + 1])}' must have its file name be a positive integer.");
+            }
+
+            if (levelFromVideoImage >= levelFromNextScreenshot)
+            {
+              currentScreenshotIndex++;
+            }
+          }
+        }
+
+        string newImagePath = $@"{Path.GetDirectoryName(videoImagesPaths[i])}\{Path.GetFileNameWithoutExtension(videoImagesPaths[i])}_combined{Path.GetExtension(videoImagesPaths[i])}";
+        using (var bitmap1 = new System.Drawing.Bitmap(screenshotsFilePaths[currentScreenshotIndex]))
+        using (var bitmap2 = new System.Drawing.Bitmap(videoImagesPaths[i]))
+        using (var combinedBitmap = new ImageManipulator().GetCombinedImage(bitmap1, bitmap2, true))
+        {
+          combinedBitmap.Save(newImagePath);
+        }
+
+        File.Delete(videoImagesPaths[i]);
+        combinedImagesPaths.Add(newImagePath);
+      }
+      
+      OnChangeStep?.Invoke($"Creating Output Video");
+      double outputFps = combinedImagesPaths.Count / timelapseLengthInSeconds;
+      string video1Path = $@"{videoImagesDirectoryPath}\tempVideo.mp4";
+      new VideoManipulator().MakeVideoFromImages(video1Path, videoImagesDirectoryPath, $"%01d_combined{Path.GetExtension(combinedImagesPaths[0])}", outputFps);
+
+      string finalVideoPath = $"{Path.GetDirectoryName(mapVideoFilePath)}\\wowvideo{GetCurrentTimeShort()}{Path.GetExtension(video1Path)}";
+      new VideoManipulator().ExtendLastFrame(finalVideoPath, video1Path, endLengthInSeconds);
+
+      Directory.Delete(videoImagesDirectoryPath, true);
 
       return finalVideoPath;
     }
