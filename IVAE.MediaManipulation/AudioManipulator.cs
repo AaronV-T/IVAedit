@@ -12,6 +12,30 @@ namespace IVAE.MediaManipulation
     private double currentFileDurationInMS = -1;
     private int totalSteps = -1, currentStep = -1;
 
+    public void AddAudio(string outputPath, string filePath, string audioFilePath)
+		{
+      if (string.IsNullOrEmpty(outputPath))
+        throw new ArgumentNullException(nameof(outputPath));
+      if (string.IsNullOrEmpty(filePath))
+        throw new ArgumentNullException(nameof(filePath));
+      if (string.IsNullOrEmpty(audioFilePath))
+        throw new ArgumentNullException(nameof(audioFilePath));
+
+      if (System.IO.File.Exists(outputPath))
+        System.IO.File.Delete(outputPath);
+
+      FFmpegProcessRunner fpr = new FFmpegProcessRunner();
+      fpr.OnDurationMessage += DurationMessageReceived;
+      fpr.OnTimeMessage += TimeMessageReceived;
+      totalSteps = 1;
+
+      currentStep = 1;
+      fpr.Run($"-i \"{filePath}\" -i \"{audioFilePath}\" -map 0 -map 1:a -c:v copy -shortest \"{outputPath}\"");
+
+      fpr.OnDurationMessage -= DurationMessageReceived;
+      fpr.OnTimeMessage -= TimeMessageReceived;
+    }
+
     public void AdjustAudioSpeed(string outputPath, string audioFilePath, float playbackRateModifier)
     {
       if (string.IsNullOrEmpty(outputPath))

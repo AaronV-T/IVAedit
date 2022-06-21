@@ -25,6 +25,16 @@ namespace IVAeditGUI
       operationSetups = new Dictionary<string, OperationSetupInfo>()
       {
         {
+          "Add Audio",
+          new OperationSetupInfo
+          (
+            new Dictionary<string, InputSetupInfo>
+            {
+            },
+            AddAudio
+          )
+        },
+        {
           "Adjust Speed",
           new OperationSetupInfo
           (
@@ -522,6 +532,47 @@ namespace IVAeditGUI
     #endregion
 
     #region Operation Controllers
+    private async Task AddAudio()
+    {
+      //const string OP_NAME = "Add Audio";
+
+      System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog1.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog1.Title = "Select Video or Audio File.";
+      openFileDialog1.Multiselect = false;
+
+      if (openFileDialog1.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      System.Windows.Forms.OpenFileDialog openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+      openFileDialog2.Filter = $"Audio or Video File|{GetAudioFormatsFilterString()}{GetVideoFormatsFilterString()}";
+      openFileDialog2.Title = "Select Video or Audio File.";
+      openFileDialog2.Multiselect = false;
+
+      if (openFileDialog2.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+      {
+        mainWindow.SetMessage("Canceled.");
+        return;
+      }
+
+      IVAE.MediaManipulation.TaskHandler taskHandler = new IVAE.MediaManipulation.TaskHandler();
+      taskHandler.OnChangeStep += ChangeCurrentStep;
+      taskHandler.OnProgressUpdate += ProgressUpdate;
+
+      DateTime start = DateTime.Now;
+      string outputPath = null;
+      await Task.Factory.StartNew(() =>
+      {
+        outputPath = taskHandler.AddAudio(openFileDialog1.FileName, openFileDialog2.FileName);
+      });
+
+      mainWindow.SetMessage($"File with added audio created '{outputPath}' in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
+      System.Diagnostics.Process.Start(outputPath);
+    }
+
     private async Task AdjustSpeed()
     {
       const string OP_NAME = "Adjust Speed";

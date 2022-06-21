@@ -13,6 +13,26 @@ namespace IVAE.MediaManipulation
     public event Action<float> OnProgressUpdate;
 
     /// <summary>
+    /// Adds audio from a file to another file.
+    /// </summary>
+    /// <param name="filePath">The absolute path to the media file.</param>
+    /// <param name="audioFilePath">The absolute path to the audio file with audio to add to the other file.</param>
+    /// <returns>Absolute path to the media file with the added audio.</returns>
+    public string AddAudio(string filePath, string audioFilePath)
+    {
+      OnChangeStep?.Invoke("Adding Audio");
+
+      string outputPath = $@"{Path.GetDirectoryName(filePath)}\{Path.GetFileNameWithoutExtension(filePath)}_AudioAdded{GetCurrentTimeShort()}{Path.GetExtension(filePath)}";
+
+      AudioManipulator audioManipulator = new AudioManipulator();
+      audioManipulator.OnProgress += ProgressUpdate;
+      audioManipulator.AddAudio(outputPath, filePath, audioFilePath);
+      audioManipulator.OnProgress -= ProgressUpdate;
+
+      return outputPath;
+    }
+
+    /// <summary>
     /// Adjusts the playback rate of a given audio or video file.
     /// </summary>
     /// <param name="filePath">The absolute path to the media file.</param>
