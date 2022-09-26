@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -651,9 +652,10 @@ ReverseVideo(outputPath, filePath);
     }
 
     public string WowToMp4(List<string> screenshotsFilePaths, string mapVideoFilePath, double timelapseLengthInSeconds, double endLengthInSeconds,
-      int levelNumberX, int levelNumberY, int levelNumberWidth, int levelNumberHeight)
+      int levelNumberX, int levelNumberY, int levelNumberWidth, int levelNumberHeight, int screenshotsWidth, int screenshotsHeight)
     {
-      return WowTimelapseHelper(screenshotsFilePaths, mapVideoFilePath, timelapseLengthInSeconds, endLengthInSeconds, levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight);
+      return WowTimelapseHelper(screenshotsFilePaths, mapVideoFilePath, timelapseLengthInSeconds, endLengthInSeconds, levelNumberX, levelNumberY,
+        levelNumberWidth, levelNumberHeight, screenshotsWidth, screenshotsHeight);
     }
 
     private string GetCurrentTimeShort()
@@ -913,7 +915,7 @@ ReverseVideo(outputPath, filePath);
     }
 
     private string WowTimelapseHelper(List<string> screenshotsFilePaths, string mapVideoFilePath, double timelapseLengthInSeconds, double endLengthInSeconds,
-      int levelNumberX, int levelNumberY, int levelNumberWidth, int levelNumberHeight)
+      int levelNumberX, int levelNumberY, int levelNumberWidth, int levelNumberHeight, int screenshotsWidth, int screenshotsHeight)
     {
       OnChangeStep?.Invoke($"Getting Images From Video");
 
@@ -927,43 +929,39 @@ ReverseVideo(outputPath, filePath);
       videoImagesPaths.Sort(new NaturalStringComparer());
 
       OnChangeStep?.Invoke($"Combining Images From Screenshots and Video");
+
       int currentScreenshotIndex = 0;
       var combinedImagesPaths = new List<string>();
+      int levelFromCurrentScreenshot = 0;
       for (int i = 0; i < videoImagesPaths.Count; i++)
       {
         OnProgressUpdate?.Invoke(i / (float)videoImagesPaths.Count);
 
-        int levelFromVideoImage;
-        using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(videoImagesPaths[i]))
-        using (System.Drawing.Bitmap cbmp = new ImageManipulator().GetCroppedImage(bmp, levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight))
-        using (ImageMagick.MagickImage magickImage = new ImageMagick.MagickImage(cbmp))
+        if (currentScreenshotIndex < screenshotsFilePaths.Count - 1)
         {
-          magickImage.Grayscale();
-          magickImage.Resize(new ImageMagick.MagickGeometry(magickImage.Width * 10, magickImage.Height * 10));
-          using (System.Drawing.Bitmap grayBmp = magickImage.ToBitmap())
+          string nextFileName = Path.GetFileNameWithoutExtension(screenshotsFilePaths[currentScreenshotIndex + 1]);
+          string levelFromNextScreenshotText = nextFileName.IndexOf('-') == -1 ? nextFileName : nextFileName.Substring(0, nextFileName.IndexOf('-'));
+          if (!int.TryParse(levelFromNextScreenshotText, out int levelFromNextScreenshot))
           {
-            string temppath = $@"{Path.GetDirectoryName(videoImagesPaths[i])}\{Path.GetFileNameWithoutExtension(videoImagesPaths[i])}_temp{Path.GetExtension(videoImagesPaths[i])}";
-            grayBmp.Save(temppath);
-            levelFromVideoImage = (int)ImageFeatureDetector.GetNumberFromImage(temppath);
-            File.Delete(temppath);
+            throw new Exception($"Screenshot file at '{Path.GetFileName(screenshotsFilePaths[currentScreenshotIndex + 1])}' must have its file name be a positive integer or two positive integers separated by a hyphen.");
           }
-        }
 
-        if (!int.TryParse(Path.GetFileNameWithoutExtension(screenshotsFilePaths[currentScreenshotIndex]), out int levelFromCurrentScreenshot))
-        {
-          throw new Exception($"Screenshot file at '{Path.GetFileName(screenshotsFilePaths[currentScreenshotIndex])}' must have its file name be a positive integer.");
-        }
-
-        if (levelFromVideoImage > levelFromCurrentScreenshot)
-        {
-          if (currentScreenshotIndex < screenshotsFilePaths.Count - 2)
+          int levelFromVideoImage = (int)GetNumberFromImage(videoImagesPaths[i], levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight);
+          if (levelFromVideoImage > levelFromCurrentScreenshot && levelFromVideoImage >= levelFromNextScreenshot)
           {
-            if (!int.TryParse(Path.GetFileNameWithoutExtension(screenshotsFilePaths[currentScreenshotIndex + 1]), out int levelFromNextScreenshot))
+            currentScreenshotIndex++;
+            levelFromCurrentScreenshot = levelFromNextScreenshot;
+          }
+          else if (levelFromVideoImage == levelFromNextScreenshot && nextFileName.IndexOf('-') >= 0)
+          {
+            decimal progressFromVideoImage = GetNumberFromImage(videoImagesPaths[i], (levelNumberX + levelNumberWidth) - 55, levelNumberY + levelNumberHeight, 55, levelNumberHeight);
+            string progressFromNextScreenshotText = nextFileName.Substring(nextFileName.IndexOf('-') + 1);
+            if (!int.TryParse(progressFromNextScreenshotText, out int progressFromNextScreenshot))
             {
-              throw new Exception($"Screenshot file at '{Path.GetFileName(screenshotsFilePaths[currentScreenshotIndex + 1])}' must have its file name be a positive integer.");
+              throw new Exception($"Screenshot file at '{Path.GetFileName(screenshotsFilePaths[currentScreenshotIndex + 1])}' must have its file name be a positive integer or two positive integers separated by a hyphen.");
             }
 
-            if (levelFromVideoImage >= levelFromNextScreenshot)
+            if (progressFromVideoImage * 10 >= progressFromNextScreenshot)
             {
               currentScreenshotIndex++;
             }
@@ -971,11 +969,29 @@ ReverseVideo(outputPath, filePath);
         }
 
         string newImagePath = $@"{Path.GetDirectoryName(videoImagesPaths[i])}\{Path.GetFileNameWithoutExtension(videoImagesPaths[i])}_combined{Path.GetExtension(videoImagesPaths[i])}";
-        using (var bitmap1 = new System.Drawing.Bitmap(screenshotsFilePaths[currentScreenshotIndex]))
-        using (var bitmap2 = new System.Drawing.Bitmap(videoImagesPaths[i]))
-        using (var combinedBitmap = new ImageManipulator().GetCombinedImage(bitmap1, bitmap2, true))
-        {
-          combinedBitmap.Save(newImagePath);
+        using (var bitmap1 = new Bitmap(screenshotsFilePaths[currentScreenshotIndex]))
+				{
+          Bitmap bitmap1Final;
+          if (bitmap1.Width == screenshotsWidth && bitmap1.Height == screenshotsHeight)
+					{
+            bitmap1Final = bitmap1;
+          }
+          else
+					{
+            bitmap1Final = new Bitmap(screenshotsWidth, screenshotsHeight);
+            using (Graphics g = Graphics.FromImage(bitmap1Final))
+            {
+              g.DrawImage(bitmap1, (screenshotsWidth / 2) - (bitmap1.Width / 2), (screenshotsHeight / 2) - (bitmap1.Height / 2));
+            }
+          }
+
+          using (var bitmap2 = new Bitmap(videoImagesPaths[i]))
+          using (var combinedBitmap = new ImageManipulator().GetCombinedImage(bitmap1Final, bitmap2, true))
+          {
+            combinedBitmap.Save(newImagePath);
+          }
+
+          bitmap1Final.Dispose();
         }
 
         File.Delete(videoImagesPaths[i]);
@@ -993,6 +1009,26 @@ ReverseVideo(outputPath, filePath);
       Directory.Delete(videoImagesDirectoryPath, true);
 
       return finalVideoPath;
+    }
+
+    private decimal GetNumberFromImage(string imagePath, double x, double y, double width, double height)
+		{
+      using (Bitmap bmp = new Bitmap(imagePath))
+      using (Bitmap croppedBmp = new ImageManipulator().GetCroppedImage(bmp, x, y, width, height))
+      using (ImageMagick.MagickImage levelMagickImage = new ImageMagick.MagickImage(croppedBmp))
+      {
+        levelMagickImage.Grayscale();
+        levelMagickImage.Resize(new ImageMagick.MagickGeometry(levelMagickImage.Width * 10, levelMagickImage.Height * 10));
+        using (Bitmap grayBmp = levelMagickImage.ToBitmap())
+        {
+          string temppath = $@"{Path.GetDirectoryName(imagePath)}\{Path.GetFileNameWithoutExtension(imagePath)}_temp{Path.GetExtension(imagePath)}";
+          grayBmp.Save(temppath);
+          decimal numberFromImage = ImageFeatureDetector.GetNumberFromImage(temppath);
+          File.Delete(temppath);
+
+          return numberFromImage;
+        }
+      }
     }
   }
 }

@@ -34,11 +34,11 @@ namespace IVAE.MediaManipulation
 
       tessBaseAPI.Init("./tessdata/", "eng", OcrEngineMode.TESSERACT_ONLY);
 
-      tessBaseAPI.SetVariable("tessedit_char_whitelist", "1234567890");
+      tessBaseAPI.SetVariable("tessedit_char_whitelist", "1234567890.%");
 
       using (tessBaseAPI.SetImage(imagePath))
       {
-        string imageText = tessBaseAPI.GetUTF8Text().Trim();
+        string imageText = tessBaseAPI.GetUTF8Text().Trim().Trim('%').Replace(" ", "");
         if (!decimal.TryParse(imageText, out decimal num))
           throw new Exception($"Unable to get a valid number from '{imagePath}'. Text: '{imageText}'");
 

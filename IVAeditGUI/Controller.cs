@@ -321,6 +321,8 @@ namespace IVAeditGUI
               { "Level Y", new InputSetupInfo(ControlType.TextBox) },
               { "Level Width", new InputSetupInfo(ControlType.TextBox) },
               { "Level Height", new InputSetupInfo(ControlType.TextBox) },
+              { "SS Width", new InputSetupInfo(ControlType.TextBox) },
+              { "SS Height", new InputSetupInfo(ControlType.TextBox) },
             },
             WowToMp4
           )
@@ -1525,19 +1527,25 @@ namespace IVAeditGUI
       string levelNumberYInputText = GetInputValue(OP_NAME, "Level Y");
       string levelNumberWidthInputText = GetInputValue(OP_NAME, "Level Width");
       string levelNumberHeightInputText = GetInputValue(OP_NAME, "Level Height");
+      string screenshotsWidthInputText = GetInputValue(OP_NAME, "SS Width");
+      string screenshotsHeightInputText = GetInputValue(OP_NAME, "SS Height");
 
       if (string.IsNullOrEmpty(timelapseLengthInSecondsText) || !double.TryParse(timelapseLengthInSecondsText, out double timelapseLengthInSeconds))
         throw new ArgumentException($"Timelapse Seconds coordinate is not a valid double.");
       if (string.IsNullOrEmpty(endLengthInSecondsText) || !double.TryParse(endLengthInSecondsText, out double endLengthInSeconds))
         throw new ArgumentException($"End Seconds is not a valid double.");
       if (string.IsNullOrEmpty(levelNumberXInputText) || !int.TryParse(levelNumberXInputText, out int levelNumberX))
-        throw new ArgumentException($"Turn Number X coordinate is not a valid integer.");
+        throw new ArgumentException($"Level X coordinate is not a valid integer.");
       if (string.IsNullOrEmpty(levelNumberYInputText) || !int.TryParse(levelNumberYInputText, out int levelNumberY))
-        throw new ArgumentException($"Turn Number Y coordinate is not a valid integer.");
+        throw new ArgumentException($"Level Y coordinate is not a valid integer.");
       if (string.IsNullOrEmpty(levelNumberWidthInputText) || !int.TryParse(levelNumberWidthInputText, out int levelNumberWidth))
-        throw new ArgumentException($"Turn Number Width is not a valid integer.");
+        throw new ArgumentException($"Level Width is not a valid integer.");
       if (string.IsNullOrEmpty(levelNumberHeightInputText) || !int.TryParse(levelNumberHeightInputText, out int levelNumberHeight))
-        throw new ArgumentException($"Turn Number Height is not a valid integer.");
+        throw new ArgumentException($"Level Height is not a valid integer.");
+      if (string.IsNullOrEmpty(screenshotsWidthInputText) || !int.TryParse(screenshotsWidthInputText, out int screenshotsWidth))
+        throw new ArgumentException($"Screenshots Width is not a valid integer.");
+      if (string.IsNullOrEmpty(screenshotsHeightInputText) || !int.TryParse(screenshotsHeightInputText, out int screenshotsHeight))
+        throw new ArgumentException($"Screenshots Height is not a valid integer.");
 
       System.Windows.Forms.OpenFileDialog openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
       openFileDialog1.Filter = $"Images|{GetImageFormatsFilterString()}";
@@ -1570,7 +1578,7 @@ namespace IVAeditGUI
       await Task.Factory.StartNew(() =>
       {
         outputPath = taskHandler.WowToMp4(openFileDialog1.FileNames.ToList(), openFileDialog2.FileName, timelapseLengthInSeconds, endLengthInSeconds,
-          levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight);
+          levelNumberX, levelNumberY, levelNumberWidth, levelNumberHeight, screenshotsWidth, screenshotsHeight);
       });
 
       mainWindow.SetMessage($"WoW Timelapse '{outputPath}' created in {Math.Round((DateTime.Now - start).TotalSeconds, 2)}s.");
